@@ -79,7 +79,7 @@ function mergeWords(tokens) {
 
 const intro = `Break the rules of grammar and think smart.\n 
                 Write this sentence using only the 200 most 
-                common english monosyllables.\n`
+                common english monosyllables.\n\n`
 const prompt = `"I am trying to write this sentence simply."`;
 function App() {
   const [text, setText] = useState(""); //s1
@@ -119,7 +119,9 @@ return (
       </h2>
 
       <textarea
-        style={{ width: "100%", height: 80 }}
+        style={{ 
+         // width: "100%", 
+          height: 80 }}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
