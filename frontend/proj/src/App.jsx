@@ -10,32 +10,40 @@ const socket = io(
   ["see", "ing", "seeing"]
 ];
 const baseWords = new Set([
+  // pronouns
   "i","you","we","they","he","she","it","me","him","her","us","them",
-  // core verbs (monosyllable)
-  "be","am","is","are","do","did","has","have","go","goes","see","sees","say","says",
-  "make","makes","take","takes","get","gets","give","gives","find","finds","think",
-  "thinks","know","knows","want","wants","try","tries","use","uses","work","works",
-  "call","calls","ask","asks","need","needs","feel","feels","leave","leaves","put",
-  "puts","keep","keeps","let","lets","help","helps","talk","talks","turn","turns",
-  "start","starts","show","shows","hear","hears","play","plays","run","runs","move",
-  "moves","live","lives","hold","holds","bring","brings","write","writes","read",
-  "reads","sit","sits","stand","stands","lose","loses","pay","pays","meet","meets",
-  "set","sets","learn","learns","change","changes","lead","leads","watch","watches",
-  "stop","stops","add","adds","spend","spends","grow","grows","open","opens","walk",
-  "walks","win","wins","wait","waits","serve","serves","die","dies","send","sends",
-  "build","builds","stay","stays","fall","falls","cut","cuts","reach","reaches",
+  // verbs (strict monosyllable base forms)
+  "be","do","have","go","see","say","make","take","get","give","find",
+  "think","know","want","try","use","work","call","ask","need","feel",
+  "leave","put","keep","let","help","talk","turn","start","show","hear",
+  "play","run","move","live","hold","bring","write","read","sit","stand",
+  "lose","pay","meet","set","learn","change","lead","watch","stop","add",
+  "spend","grow","open","walk","win","wait","serve","die","send","build",
+  "stay","fall","cut","reach","rise","drive","break","choose","draw",
+  "drink","fight","fly","hide","ride","shake","shoot","sing","sink",
+  "sleep","slide","speak","steal","stick","swim","swing","teach","throw",
+  "wake","wear","weigh","wind","wrap","burn","burst","cast","catch",
+  "climb","count","creep","deal","dig","dive","feed","fight","fill",
+  "fold","grip","hang","hit","hold","hunt","jump","kick","knit","lift",
+  "lock","march","mark","mix","pack","plant","press","pull","push",
+  "ring","roll","rub","rush","score","serve","shut","slam","slide",
+  "smash","spin","split","spot","spray","stack","step","stir","stretch",
+  "strike","sweep","switch","tend","test","track","trade","trust","twist",
   // language-related nouns
-  "word","text","line","name","term","sign","sound","tone","mark","form","type",
-  "code","script","rule","set","list","note","voice","speech","talk","chat",
+  "word","text","line","name","term","sign","sound","tone","mark","form",
+  "type","code","rule","set","list","note","voice","speech","talk","chat",
   // general nouns
-  "time","day","year","way","man","world","life","hand","part","child","eye","place",
-  "work","week","case","point","group","fact","home","room","side","kind","head",
-  "house","friend","power","hour","game","end","law","car","city","team","name",
-  // number words (monosyllable only)
+  "time","day","year","way","man","world","life","hand","part","child","eye",
+  "place","work","week","case","point","group","fact","home","room","side",
+  "kind","head","house","friend","power","hour","game","end","law","car",
+  "city","team","name","road","tree","rock","wind","fire","rain","snow",
+  "sun","moon","star","sky","sea","land","hill","field","farm","plant",
+  "leaf","root","bird","fish","dog","cat","horse","cow","sheep","pig",
+  // numbers (strict monosyllable)
   "one","two","three","four","five","six","seven","eight","nine","ten",
-  "plus", "times",
   // modifiers
-  "good","bad","big","small","long","short","high","low","fast","slow","new","old"
+  "good","bad","big","small","long","short","high","low","fast","slow",
+  "new","old","young","rich","poor","strong","weak","hard","soft","dark","light"
 ]);
 const allowedWords = new Set([
   ...baseWords,
