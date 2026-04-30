@@ -10,38 +10,40 @@ const socket = io(
   ["see", "ing", "seeing"]
 ];
 const baseWords = new Set([
-  "i","you","we","they",
-  // verbs (present tense)
-  "be","am","is","are","do","does","have","has","go","goes","see","sees","say","says",
-  "make","makes","take","takes","get","gets","give","gives","find","finds","think","thinks",
-  "know","knows","want","wants","try","tries","use","uses","work","works","call","calls",
-  "ask","asks","need","needs","feel","feels","leave","leaves","put","puts","keep","keeps",
-  "let","lets","begin","begins","seem","seems","help","helps","talk","talks","turn","turns",
-  "start","starts","show","shows","hear","hears","play","plays","run","runs","move","moves",
-  "live","lives","hold","holds","bring","brings","write","writes","sit","sits","stand","stands",
-  "lose","loses","pay","pays","meet","meets","set","sets","learn","learns","change","changes",
-  "lead","leads","watch","watches","follow","follows","stop","stops","create","creates",
-  "speak","speaks","read","reads","allow","allows","add","adds","spend","spends","grow","grows",
-  "open","opens","walk","walks","win","wins","offer","offers","remember","remembers",
-  "love","loves","consider","considers","appear","appears","buy","buys","wait","waits",
-  "serve","serves","die","dies","send","sends","expect","expects","build","builds","stay","stays",
-  "fall","falls","cut","cuts","reach","reaches","remain","remains",
-  // nouns
-  "time","person","year","way","day","thing","man","world","life","hand","part","child",
-  "eye","woman","place","work","week","case","point","government","company","number",
-  "group","problem","fact","home","water","room","mother","area","money","story","issue",
-  "side","kind","head","house","service","friend","father","power","hour","game","line",
-  "end","member","law","car","city","community","name","president","team","minute",
-  "idea","kid","body","information","back","parent","face","others","level","office",
-  "door","health","person","art","war","history","party","result","change","morning",
-  "reason","research","girl","guy","moment","air","teacher","force","education"
+  "i","you","we","they","he","she","it","me","him","her","us","them",
+  // core verbs (monosyllable)
+  "be","am","is","are","do","did","has","have","go","goes","see","sees","say","says",
+  "make","makes","take","takes","get","gets","give","gives","find","finds","think",
+  "thinks","know","knows","want","wants","try","tries","use","uses","work","works",
+  "call","calls","ask","asks","need","needs","feel","feels","leave","leaves","put",
+  "puts","keep","keeps","let","lets","help","helps","talk","talks","turn","turns",
+  "start","starts","show","shows","hear","hears","play","plays","run","runs","move",
+  "moves","live","lives","hold","holds","bring","brings","write","writes","read",
+  "reads","sit","sits","stand","stands","lose","loses","pay","pays","meet","meets",
+  "set","sets","learn","learns","change","changes","lead","leads","watch","watches",
+  "stop","stops","add","adds","spend","spends","grow","grows","open","opens","walk",
+  "walks","win","wins","wait","waits","serve","serves","die","dies","send","sends",
+  "build","builds","stay","stays","fall","falls","cut","cuts","reach","reaches",
+  // language-related nouns
+  "word","text","line","name","term","sign","sound","tone","mark","form","type",
+  "code","script","rule","set","list","note","voice","speech","talk","chat",
+  // general nouns
+  "time","day","year","way","man","world","life","hand","part","child","eye","place",
+  "work","week","case","point","group","fact","home","room","side","kind","head",
+  "house","friend","power","hour","game","end","law","car","city","team","name",
+  // number words (monosyllable only)
+  "one","two","three","four","five","six","seven","eight","nine","ten",
+  times")
+  // modifiers
+  "good","bad","big","small","long","short","high","low","fast","slow","new","old"
 ]);
+marginTop: 40, ]);
 const allowedWords = new Set([
   ...baseWords,
   ...merges.map(([, , combined]) => combined)
 ])
 
-const prompt = "Write this sentence using only the 200 most common english words:";
+const prompt = "Break the rules of grammar and think smart: Write this sentence using only the 200 most common english monosyllables:";
 
 function mergeWords(tokens) {
   const result = [];
