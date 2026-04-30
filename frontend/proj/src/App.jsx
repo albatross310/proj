@@ -33,11 +33,10 @@ const baseWords = new Set([
   "house","friend","power","hour","game","end","law","car","city","team","name",
   // number words (monosyllable only)
   "one","two","three","four","five","six","seven","eight","nine","ten",
-  "plus", "times")
+  "plus", "times"
   // modifiers
   "good","bad","big","small","long","short","high","low","fast","slow","new","old"
 ]);
-marginTop: 40, ]);
 const allowedWords = new Set([
   ...baseWords,
   ...merges.map(([, , combined]) => combined)
