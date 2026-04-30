@@ -125,7 +125,6 @@ return (
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
-    </div>
     <div>
       {words.map((t, i) => (
         <span
@@ -142,6 +141,8 @@ return (
       ))}
     </div>
   </div>
+</div>
+
 );
 }
 
