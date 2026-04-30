@@ -32,6 +32,7 @@ const baseWords = new Set([
   // language-related nouns
   "word","text","line","name","term","sign","sound","tone","mark","form",
   "type","code","rule","set","list","note","voice","speech","talk","chat",
+  "box", "purple",
   // general nouns
   "time","day","year","way","man","world","life","hand","part","child","eye",
   "place","work","week","case","point","group","fact","home","room","side",
@@ -78,7 +79,7 @@ function mergeWords(tokens) {
 
 const intro = `Break the rules of grammar and think smart.\n 
                 Write this sentence using only the 200 most 
-                common english monosyllables.`
+                common english monosyllables.\n`
 const prompt = `"I am trying to write this sentence simply."`;
 function App() {
   const [text, setText] = useState(""); //s1
@@ -103,7 +104,7 @@ function App() {
 
 return (
   <div style={{ display: "flex", justifyContent: "center", marginTop: 200 }}>
-    <div style={{ width: "66%" }}>
+    <div>
       <h2
         style={{
           whiteSpace: "pre-line",
