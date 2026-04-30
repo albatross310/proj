@@ -76,9 +76,10 @@ function mergeWords(tokens) {
   return result;
 }
 
-const prompt = `Break the rules of grammar and think smart:\n 
+const prompt = `Break the rules of grammar and think smart.\n 
                 Write this sentence using only the 200 most 
-                common english monosyllables:`;
+                common english monosyllables.\n
+                "I am trying to write this sentence simply."`;
 function App() {
   const [text, setText] = useState(""); //s1
   const [validated, setValidated] = useState([]); // s2
