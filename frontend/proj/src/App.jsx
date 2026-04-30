@@ -49,8 +49,8 @@ const allowedWords = new Set([
   ...baseWords,
   ...merges.map(([, , combined]) => combined)
 ])
+const prompt = "Break the rules of grammar and think smart:\n Write this sentence using only the 200 most common english monosyllables:";
 
-const prompt = "Break the rules of grammar and think smart: Write this sentence using only the 200 most common english monosyllables:";
 
 function mergeWords(tokens) {
   const result = [];
@@ -100,7 +100,7 @@ function App() {
 
 return (
   <div>
-    <h2 style={{marginTop: 60,  marginBottom: 16 }}>{prompt}</h2>
+    <h2 style={{width: "66%", marginTop: 60,  marginBottom: 16 }}>{prompt}</h2>
     <textarea
       style={{ width: "66%", height: 80 }}
       value={text}
