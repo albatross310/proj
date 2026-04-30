@@ -102,8 +102,7 @@ function App() {
 
 return (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 40 }}>
-    <h2 style={{whiteSpace: "pre-line", 
-      width: "66%", marginTop: 200,  
+    <h2 style={{whiteSpace: "pre-line", marginTop: 200,  
       marginBottom: 50 }}>{prompt}
     </h2>
     <textarea
