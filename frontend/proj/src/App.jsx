@@ -76,10 +76,10 @@ function mergeWords(tokens) {
   return result;
 }
 
-const prompt = `Break the rules of grammar and think smart.\n 
+const intro = `Break the rules of grammar and think smart.\n 
                 Write this sentence using only the 200 most 
-                common english monosyllables.\n
-                "I am trying to write this sentence simply."`;
+                common english monosyllables.`
+const prompt = `"I am trying to write this sentence simply."`;
 function App() {
   const [text, setText] = useState(""); //s1
   const [validated, setValidated] = useState([]); // s2
@@ -102,15 +102,26 @@ function App() {
   }, []);
 
 return (
-  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 40 }}>
-    <h2 style={{whiteSpace: "pre-line", marginTop: 200,  
-      marginBottom: 50, textAlign: "left"}}>{prompt}
-    </h2>
-    <textarea
-      style={{ width: "66%", height: 80 }}
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-    />
+  <div style={{ display: "flex", justifyContent: "center", marginTop: 200 }}>
+    <div style={{ width: "66%" }}>
+      <h2
+        style={{
+          whiteSpace: "pre-line",
+          marginBottom: 50,
+          textAlign: "left"
+        }}
+      >
+        {intro}
+        <span style={{ color: "purple" }}>
+          {prompt}
+        </span>
+      </h2>
+
+      <textarea
+        style={{ width: "100%", height: 80 }}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
 
     <div>
       {words.map((t, i) => (
