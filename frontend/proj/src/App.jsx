@@ -120,7 +120,7 @@ return (
 
       <textarea
         style={{ 
-         // width: "100%", 
+          width: "100%", 
           height: 80 }}
         value={text}
         onChange={(e) => setText(e.target.value)}
