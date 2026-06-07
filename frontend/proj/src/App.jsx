@@ -365,6 +365,15 @@ useEffect(() => {
   if (page === "game") setRevealIndex(0);
 }, [page, promptIndex]);
 
+//CLOSE MENU ON CLICK AWAY
+// (clicks inside the menu stopPropagation, so they never reach window)
+useEffect(() => {
+  if (!menuOpen) return;
+  const close = () => setMenuOpen(false);
+  window.addEventListener("click", close);
+  return () => window.removeEventListener("click", close);
+}, [menuOpen]);
+
 //TOP ANSWERS
 useEffect(() => {
   if (page !== "results") return;
@@ -437,12 +446,24 @@ useEffect(() => {
 
 //ABOUT PAGE
 if (page === "about") {
+  // \n in the source marks paragraph breaks; HTML collapses raw newlines,
+  // so split into real <p> elements here.
+  const aboutParagraphs = aboutDotComma
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
   return (
     <div style={containerStyle}>{renderMenu()}<br/><br/>
       <h2>About DotComma</h2><br/>
-      <p>{aboutDotComma}</p><br/><br/>
-      <button style = {buttonStyle} 
+      <div style={{ textAlign: "left" }}>
+        {aboutParagraphs.map((p, i) => (
+          <p key={i} style={{ marginBottom: 16 }}>{p}</p>
+        ))}
+      </div>
+      <br/>
+      <button style = {buttonStyle}
         onClick={() => setPage("intro")}>Back</button>
+      <br/><br/>
     </div>
   )}
 
