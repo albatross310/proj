@@ -161,6 +161,19 @@ function parseScript(script) {
   });
 }
 
+// "2026-06-07 16:10:24" (UTC from SQLite) -> "7 Jun ~7pm" in local time
+function formatSubmitted(createdAt) {
+  if (!createdAt) return "";
+  const d = new Date(createdAt.replace(" ", "T") + "Z");
+  if (isNaN(d)) return "";
+  let h = d.getHours();
+  if (d.getMinutes() >= 30) h = (h + 1) % 24; // ~ nearest hour
+  const ampm = h >= 12 ? "pm" : "am";
+  const hr = h % 12 || 12;
+  const month = d.toLocaleString("en", { month: "short" });
+  return `${d.getDate()} ${month} ~${hr}${ampm}`;
+}
+
 function renderFormatted(script) {
   return script.split("\n").map((line, i) => (
     <span key={i}>
@@ -761,6 +774,8 @@ return (
               {a.all_words_valid ? "all words valid" : "some words off-list"}
               {" · "}
               {a.score} pts
+              {" · "}
+              {formatSubmitted(a.created_at)}
             </div>
           </div>
         ))}

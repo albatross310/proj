@@ -121,7 +121,7 @@ app.get("/api/prompts/:promptKey/top-answers", async (request) => {
     LEFT JOIN users u ON u.id = a.user_id
     WHERE a.prompt_key = ? AND a.visibility = 'public'
     ORDER BY a.score DESC, a.created_at DESC
-    LIMIT 10
+    LIMIT 7
   `).all(request.params.promptKey);
 
   return { answers };
@@ -129,15 +129,27 @@ app.get("/api/prompts/:promptKey/top-answers", async (request) => {
 
 // Dev-only: browse all stored answers in the browser.
 // Disabled in production (set NODE_ENV=production when deploying).
+// Emails are masked by default; append ?full=1 to see them unmasked.
 if (process.env.NODE_ENV !== "production") {
-  app.get("/api/dev/answers", async () => ({
-    answers: db.prepare(`
+  const maskEmail = (email) => {
+    if (!email) return null;
+    const [local, domain] = email.split("@");
+    return `${local.slice(0, 2)}***@${domain}`;
+  };
+
+  app.get("/api/dev/answers", async (request) => {
+    const rows = db.prepare(`
       SELECT a.*, u.display_name, u.email
       FROM answers a
       LEFT JOIN users u ON u.id = a.user_id
       ORDER BY a.id DESC
-    `).all()
-  }));
+    `).all();
+
+    if (request.query.full !== "1") {
+      for (const row of rows) row.email = maskEmail(row.email);
+    }
+    return { answers: rows };
+  });
 }
 
 app.listen({port: 3000, host: "0.0.0.0" }, () => {  // s1
