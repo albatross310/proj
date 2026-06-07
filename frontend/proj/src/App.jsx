@@ -226,6 +226,11 @@ const [authCode, setAuthCode] = useState("");
 const [authError, setAuthError] = useState("");
 const [topAnswers, setTopAnswers] = useState([]);
 const [answersVersion, setAnswersVersion] = useState(0);
+// Sort choice persists across pages (app-level state) and reloads (localStorage)
+const [sortBy, setSortBy] = useState(
+  () => localStorage.getItem("dotcomma_sort") || "points"
+);
+const [likeNote, setLikeNote] = useState("");
 const [promptIndex, setPromptIndex] = useState(0);
 const [introIndex, setIntroIndex] = useState(0);
 const [revealIndex, setRevealIndex] = useState(0);
@@ -450,16 +455,51 @@ useEffect(() => {
   // submitted answer finishes saving), so a stale response can't
   // overwrite the fresh list.
   const controller = new AbortController();
-  fetch(`${API_URL}/api/prompts/${promptKeys[promptIndex]}/top-answers`, {
-    signal: controller.signal
-  })
+  const token = localStorage.getItem("dotcomma_token");
+  fetch(
+    `${API_URL}/api/prompts/${promptKeys[promptIndex]}/top-answers?sort=${sortBy}`,
+    {
+      signal: controller.signal,
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    }
+  )
     .then((res) => res.json())
     .then((data) => setTopAnswers(data.answers || []))
     .catch((err) => {
       if (err.name !== "AbortError") setTopAnswers([]);
     });
   return () => controller.abort();
-}, [page, promptIndex, answersVersion]);
+}, [page, promptIndex, answersVersion, sortBy]);
+
+//SORT CHOICE + LIKES
+const changeSort = (s) => {
+  setSortBy(s);
+  localStorage.setItem("dotcomma_sort", s);
+};
+
+const likeAnswer = (answerId) => {
+  const token = localStorage.getItem("dotcomma_token");
+  if (!token) {
+    setLikeNote("Sign in to like answers.");
+    return;
+  }
+  setLikeNote("");
+  fetch(`${API_URL}/api/answers/${answerId}/like`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then((res) => (res.ok ? res.json() : Promise.reject()))
+    .then((data) =>
+      setTopAnswers((prev) =>
+        prev.map((a) =>
+          a.id === answerId
+            ? { ...a, likes: data.likes, likedByMe: data.liked ? 1 : 0 }
+            : a
+        )
+      )
+    )
+    .catch(() => {});
+};
 
 //SUBMIT ANSWER
 const submitAnswer = () => {
@@ -757,7 +797,34 @@ return (
     </button>
     {topAnswers.length > 0 && (
       <div style={{ textAlign: "left", fontSize: 16, margin: "30px 0" }}>
-        <p style={{ opacity: 0.7 }}>Other players wrote:</p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 10
+          }}
+        >
+          <p style={{ opacity: 0.7 }}>Other players wrote:</p>
+          <span>
+            <button
+              className={`dc-chip${sortBy === "points" ? " dc-chip-active" : ""}`}
+              onClick={() => changeSort("points")}
+            >
+              Points
+            </button>
+            {" "}
+            <button
+              className={`dc-chip${sortBy === "recent" ? " dc-chip-active" : ""}`}
+              onClick={() => changeSort("recent")}
+            >
+              Most recent
+            </button>
+          </span>
+        </div>
+        {likeNote && (
+          <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 8 }}>{likeNote}</p>
+        )}
         {topAnswers.map((a) => (
           <div
             key={a.id}
@@ -768,14 +835,30 @@ return (
             }}
           >
             <div>“{a.answer_text}”</div>
-            <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>
-              {a.anonymous_name}
-              {" · "}
-              {a.all_words_valid ? "all words valid" : "some words off-list"}
-              {" · "}
-              {a.score} pts
-              {" · "}
-              {formatSubmitted(a.created_at)}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: 4
+              }}
+            >
+              <span style={{ fontSize: 13, opacity: 0.6 }}>
+                {a.anonymous_name}
+                {" · "}
+                {a.all_words_valid ? "all words valid" : "some words off-list"}
+                {" · "}
+                {a.score} pts
+                {" · "}
+                {formatSubmitted(a.created_at)}
+              </span>
+              <button
+                className="dc-like"
+                onClick={() => likeAnswer(a.id)}
+                aria-label={a.likedByMe ? "Unlike" : "Like"}
+              >
+                {a.likedByMe ? "♥" : "♡"} {a.likes}
+              </button>
             </div>
           </div>
         ))}
