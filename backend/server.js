@@ -127,6 +127,19 @@ app.get("/api/prompts/:promptKey/top-answers", async (request) => {
   return { answers };
 });
 
+// Dev-only: browse all stored answers in the browser.
+// Disabled in production (set NODE_ENV=production when deploying).
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/dev/answers", async () => ({
+    answers: db.prepare(`
+      SELECT a.*, u.display_name, u.email
+      FROM answers a
+      LEFT JOIN users u ON u.id = a.user_id
+      ORDER BY a.id DESC
+    `).all()
+  }));
+}
+
 app.listen({port: 3000, host: "0.0.0.0" }, () => {  // s1
     console.log("http://localhost:3000");
 });
