@@ -383,7 +383,10 @@ useEffect(() => {
 
 //RESET
 useEffect(() => {
-  if (page === "game") setRevealIndex(0);
+  if (page === "game") {
+    setRevealIndex(0);
+    setIsTyping(false); // stale isTyping blocked click-to-reveal
+  }
 }, [page, promptIndex]);
 
 //RESTORE SESSION ON LOAD
