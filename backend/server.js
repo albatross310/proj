@@ -131,11 +131,7 @@ app.get("/api/prompts/:promptKey/top-answers", async (request) => {
 // Disabled in production (set NODE_ENV=production when deploying).
 // Emails are masked by default; append ?full=1 to see them unmasked.
 if (process.env.NODE_ENV !== "production") {
-  const maskEmail = (email) => {
-    if (!email) return null;
-    const [local, domain] = email.split("@");
-    return `${local.slice(0, 2)}***@${domain}`;
-  };
+  const maskEmail = (email) => (email ? "***@***" : null);
 
   app.get("/api/dev/answers", async (request) => {
     const rows = db.prepare(`
