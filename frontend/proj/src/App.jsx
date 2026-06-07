@@ -201,6 +201,8 @@ const [resultMessage, setResultMessage] = useState("");
 const inputRef = useRef(null);
 const [isTyping, setIsTyping] = useState(false);
 const [results, setResults] = useState([]);
+const [menuOpen, setMenuOpen] = useState(false);
+const [menuNote, setMenuNote] = useState("");
 const [topAnswers, setTopAnswers] = useState([]);
 const [answersVersion, setAnswersVersion] = useState(0);
 const [promptIndex, setPromptIndex] = useState(0);
@@ -245,6 +247,101 @@ const buttonStyle = {
   cursor: "pointer",
   minWidth: 120
 };
+const menuItemStyle = {
+  padding: "8px 14px",
+  cursor: "pointer",
+  fontSize: 16
+};
+
+//MENU (spec Phase 3) — top-right ☰ on every page.
+// stopPropagation so menu clicks don't advance intro/game reveals.
+const renderMenu = () => (
+  <div
+    onClick={(e) => e.stopPropagation()}
+    style={{
+      position: "absolute",
+      top: 10,
+      right: 10,
+      textAlign: "right",
+      zIndex: 10
+    }}
+  >
+    <button
+      aria-label="Menu"
+      onClick={() => {
+        setMenuOpen((o) => !o);
+        setMenuNote("");
+      }}
+      style={{
+        fontSize: 22,
+        background: "none",
+        border: "none",
+        cursor: "pointer"
+      }}
+    >
+      ☰
+    </button>
+    {menuOpen && (
+      <div
+        style={{
+          background: "white",
+          border: "1px solid #ccc",
+          borderRadius: 6,
+          textAlign: "left",
+          minWidth: 190,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+        }}
+      >
+        <div
+          style={menuItemStyle}
+          onClick={() => setMenuNote("Sign-in is coming soon.")}
+        >
+          Sign in
+        </div>
+        <div
+          style={menuItemStyle}
+          onClick={() => setMenuNote("Settings are coming soon.")}
+        >
+          Settings
+        </div>
+        <div
+          style={menuItemStyle}
+          onClick={() => {
+            setMenuOpen(false);
+            setPage("about");
+          }}
+        >
+          About DotComma
+        </div>
+        <div
+          style={menuItemStyle}
+          onClick={() => setMenuNote("My answers is coming soon.")}
+        >
+          My answers
+        </div>
+        <div
+          style={menuItemStyle}
+          onClick={() => {
+            setResults([]);
+            setPromptIndex(0);
+            setText("");
+            setIntroIndex(0);
+            setRevealIndex(0);
+            setMenuOpen(false);
+            setPage("intro");
+          }}
+        >
+          Reset local progress
+        </div>
+        {menuNote && (
+          <p style={{ fontSize: 13, opacity: 0.6, padding: "0 14px 8px", margin: 0 }}>
+            {menuNote}
+          </p>
+        )}
+      </div>
+    )}
+  </div>
+);
 
 const debounceRef = useRef(null);
 //DEBOUNCE
@@ -341,7 +438,7 @@ useEffect(() => {
 //ABOUT PAGE
 if (page === "about") {
   return (
-    <div style={containerStyle}><br/><br/>
+    <div style={containerStyle}>{renderMenu()}<br/><br/>
       <h2>About DotComma</h2><br/>
       <p>{aboutDotComma}</p><br/><br/>
       <button style = {buttonStyle} 
@@ -368,6 +465,7 @@ if (page === "intro") {
       }}
     >
       <div style={containerStyle}>
+        {renderMenu()}
         <h2 style={{ fontSize: 32, color: "purple" }}>
           <br/>Welcome to DotComma
         </h2>
@@ -421,6 +519,7 @@ if (page === "results") {
 return (
 <div style={{ textAlign: "center", marginTop: 100, fontSize: 24,}}>
   <div style = {containerStyle}>
+    {renderMenu()}
     <h2 style={{ fontSize: 24, minHeight: 200 }}>
       <br/><br/>{resultMessage}
     </h2>
@@ -506,6 +605,7 @@ return (
   }}
 >
   <div style = {containerStyle}>
+    {renderMenu()}
     <h2
       style={{
         minHeight: 200
