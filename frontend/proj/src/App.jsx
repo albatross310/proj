@@ -2,164 +2,23 @@ import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { useRef } from "react";
 import "./App.css";
+import { allowedWords, mergeWords } from "./words.js";
+import { aboutDotComma, introPages } from "./about.jsx";
+import {
+  gamePages,
+  promptKeys,
+  headings,
+  prompts,
+  clue,
+  hints,
+  renderFormatted
+} from "./prompts.jsx";
 
 const API_URL = import.meta.env.DEV
   ? "http://localhost:3000"
   : "https://proj-1o7w.onrender.com";
 
-const socket = io(API_URL);const merges = [
-  ["be", "ing", "being"],
-  ["see", "ing", "seeing"]
-];
-const baseWords = new Set([
-  // pronouns
-  "i","you","we","they","he","she","it","me","him","her","us","them",
-  // verbs (strict monosyllable base forms)
-  "be","do","have","go","see","say","make","take","get","give","find",
-  "think","know","want","try","use","work","call","ask","need","feel",
-  "leave","put","keep","let","help","talk","turn","start","show","hear",
-  "play","run","move","live","hold","bring","write","read","sit","stand",
-  "lose","pay","meet","set","learn","change","lead","watch","stop","add",
-  "spend","grow","open","walk","win","wait","serve","die","send","build",
-  "stay","fall","cut","reach","rise","drive","break","choose","draw",
-  "drink","fight","fly","hide","ride","shake","shoot","sing","sink",
-  "sleep","slide","speak","steal","stick","swim","swing","teach","throw",
-  "wake","wear","weigh","wind","wrap","burn","burst","cast","catch",
-  "climb","count","creep","deal","dig","dive","feed","fight","fill",
-  "fold","grip","hang","hit","hold","hunt","jump","kick","knit","lift",
-  "lock","march","mark","mix","pack","plant","press","pull","push",
-  "ring","roll","rub","rush","score","serve","shut","slam","slide",
-  "smash","spin","split","spot","spray","stack","step","stir","stretch",
-  "strike","sweep","switch","tend","test","track","trade","trust","twist",
-  // prepositions
-  "in", "on", "with", "at",
-  // language-related nouns
-  "word","text","line","name","term","sign","sound","tone","mark","form",
-  "type","code","rule","set","list","note","voice","speech","talk","chat",
-  "box", "purple",
-  // general nouns
-  "time","day","year","way","man","world","life","hand","part","child","eye",
-  "place","work","week","case","point","group","fact","home","room","side",
-  "kind","head","house","friend","power","hour","game","end","law","car",
-  "city","team","name","road","tree","rock","wind","fire","rain","snow",
-  "sun","moon","star","sky","sea","land","hill","field","farm","plant",
-  "leaf","root","bird","fish","dog","cat","horse","cow","sheep","pig",
-  // numbers (strict monosyllable)
-  "one","two","three","four","five","six","seven","eight","nine","ten",
-  // modifiers
-  "good","bad","big","small","long","short","high","low","fast","slow",
-  "new","old","young","rich","poor","strong","weak","hard","soft","dark","light"
-]);
-const allowedWords = new Set([
-  ...baseWords,
-  ...merges.map(([, , combined]) => combined)
-])
-function mergeWords(tokens) {
-  const result = [];
-
-  for (let i = 0; i < tokens.length; i++) {
-    let merged = false;
-
-    for (const [a, b, combined] of merges) {
-      if (
-        tokens[i] === a &&
-        tokens[i + 1] === " " &&
-        tokens[i + 2] === b
-      ) {
-        result.push(combined);
-        i += 2;
-        merged = true;
-        break;
-      }
-    }
-
-    if (!merged) result.push(tokens[i]);
-  }
-
-  return result;
-}
-
-const aboutDotComma = 
-  `DotComma aims for nothing less than what modern banking and cryptocurrency has 
-  already achieved for years. To contribute to universal human language using 
-  technology. In many ways currency is the original human language. Currency began 
-  with trade, with giving your daughter a lamb, or a seed. It is the language most
-  firmly rooted in the ground--the home of potatoes, of silver, and of seed. (The other 
-  universal language rooted in physicality and the earth is arguably power, but we won't 
-  go there for now.)\n
-  Money took on a state wide form when technology granted us the modern bank.
-  More recently, technology has afforded money a more universal 
-  form, in the likes of cryptocurrency.  \n
-  The same story goes for the two most heavenly forms of language. The languages
-  of mathematics and of art. This unlikely duo would at first seem far apart, but have 
-  become paradoxically intertwined the more they have become universal. This unlikely 
-  relationship was born in it's more modern form in the geometry and geometrically precise 
-  artifices made popular in classical times,
-  be it with the Greeks, Arabians, Chinese or classical-era South Americans, and later, in these 
-  traditions respective Modern resurgences.\n
-  Contrary to money, which has its first roots in the earth, the primordial harkings
-  of maths and art come from the sky. For maths, this came in the language of 
-  astrology and astronomy, with its angles, orbits, calendars and predictions. For art,
-  it came first in the stories we told about the stars, planets, weather, and clouds. 
-  In both cases the developments
-  were vastly mediated by technology, whether it be brushes, rulers, protractors,
-  or the Klavier.\n
-  Both Money then, and Artifico-Mathemathics (or A/M, as we might refer to it), have 
-  been firmly established as universal "word games," and that through technology.
-  But what of ordinary language, the branches and twigs, the rain droplets and sun rays,
-  that span between. 
-
-
-  `
-const introPages = [
-  <>DotComma is a <b>language game</b>. <br /><br /></>,
-  <>Players solve lines in <b>short words</b>. <br /><br /> </>,
-  <>DotComma helps thinkers <b>write with zest</b>.<br /><br /> </>,
-  <>Its goal is to build a <b>shared language</b>.<br /><br /> </>,
-  <>Day 1 teaches the basic moves.<br /><br /></>,
-  <>
-    <span className="dc-hint" style = {{fontSize: 16}}>
-      CLICK ANYWHERE TO CONTINUE
-    </span>
-</>
-];
-const script = `
-HEADING | INTRO | PROMPT | CLUE | CORRECT | ANSWERS | HINT
----
-Rule 1: Be simple! | 
-Rewrite the following line in **short**, plain words.|
-"I try write this line with not-long words." | 
-Clue:  I t__ __ ___t_ ___ l___ _n ___r_ ___d_. |
-I try write to write the line in short words |
-I try write to write the line in short words |
-NA
----
-`;
-
-function parseScript(script) {
-  return script
-    .split("---")
-    .map(row => row.trim())
-    .filter(row => row && !row.startsWith("HEADING"))
-    .map(row => {
-    const [heading, intro, prompt, clue, correct, answers, hint] = row
-      .split("|")
-      .map(cell => cell.trim());
-
-    return {
-      heading: heading + "\n",
-      intro: intro
-        .split("\n")
-        .map(x => x.trim())
-        .filter(Boolean),      prompt: prompt + "\n",
-      clue,
-      correct,
-      answers: answers ? answers.split(";").map(a => 
-        a.trim()).filter(Boolean) : [],
-      hint
-    };
-  });
-}
+const socket = io(API_URL);
 
 // "2026-06-07 16:10:24" (UTC from SQLite) -> "07/06/26 7pm" in local time
 function formatSubmitted(createdAt) {
@@ -175,34 +34,6 @@ function formatSubmitted(createdAt) {
   const yy = String(d.getFullYear()).slice(-2);
   return `${dd}/${mm}/${yy} ${hr}${ampm}`;
 }
-
-function renderFormatted(script) {
-  return script.split("\n").map((line, i) => (
-    <span key={i}>
-      {line.split(/(\*\*.*?\*\*)/g).map((part, j) =>
-        part.startsWith("**") && part.endsWith("**")
-          ? <b key={j}>{part.slice(2, -2)}</b>
-          : part
-      )}
-      <br />
-    </span>
-  ));
-}
-const gamePages = parseScript(script);
-// Stable key per prompt, e.g. "Rule 1: Be simple!" -> "rule-1-be-simple"
-const promptKeys = gamePages.map(p =>
-  p.heading
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-);
-const headings = gamePages.map(p => renderFormatted(p.heading));
-const prompts = gamePages.map(p => renderFormatted(p.prompt));
-const clue = gamePages.map(p => p.clue);
-const correctAnswers = gamePages.map(p => p.correct);
-const hints = gamePages.map(p => p.hint);
-const answers = gamePages.map(p => p.answers);
-
 
 function App() {
 
