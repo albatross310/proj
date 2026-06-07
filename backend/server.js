@@ -58,6 +58,27 @@ app.post("/api/auth/signout", async (request) => {
   return { ok: true };
 });
 
+// Change the signed-in user's display name (Settings).
+app.post("/api/me/display-name", async (request, reply) => {
+  const user = auth.getUserForRequest(request);
+  if (!user) return reply.code(401).send({ error: "Not signed in." });
+
+  const result = auth.setDisplayName(user, request.body?.displayName);
+  if (result.error) return reply.code(400).send({ error: result.error });
+  return result;
+});
+
+// One-off migration: earlier users got their email local part as a
+// display name, which is identifying. Regenerate those.
+for (const u of db.prepare("SELECT * FROM users").all()) {
+  if (u.display_name === u.email.split("@")[0].slice(0, 40)) {
+    const fresh = auth.generateDisplayName();
+    db.prepare("UPDATE users SET display_name = ? WHERE id = ?")
+      .run(fresh, u.id);
+    console.log(`[migrate] renamed user ${u.id} to ${fresh}`);
+  }
+}
+
 // Submit an answer: validate server-side (authoritative), store, return both.
 app.post("/api/answers", async (request, reply) => {
   const { promptKey, answerText, visibility, anonymousName } = request.body || {};

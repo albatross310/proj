@@ -10,6 +10,36 @@ const MAX_CODE_ATTEMPTS = 5;
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 
+// Default display names are generated, never derived from the email —
+// an email local part (e.g. "petergibson127") is identifying (spec: privacy).
+const NAME_FIRST = [
+  "River", "Moss", "Fern", "Sun", "Moon", "Rain", "Cloud", "Reef",
+  "Wave", "Sand", "Leaf", "Pine", "Stone", "Star", "Sea", "Hill"
+];
+const NAME_SECOND = [
+  "Fox", "Wren", "Gull", "Frog", "Crab", "Owl", "Finch", "Koala",
+  "Skink", "Ibis", "Roo", "Moth", "Carp", "Lark", "Newt", "Swan"
+];
+
+function generateDisplayName() {
+  const first = NAME_FIRST[crypto.randomInt(NAME_FIRST.length)];
+  const second = NAME_SECOND[crypto.randomInt(NAME_SECOND.length)];
+  const name = `${first}${second}`;
+  const taken = db.prepare("SELECT 1 FROM users WHERE display_name = ?")
+    .get(name);
+  return taken ? `${name}${crypto.randomInt(10, 100)}` : name;
+}
+
+// Returns the updated user or { error }.
+function setDisplayName(user, rawName) {
+  const name = String(rawName ?? "").trim().slice(0, 30);
+  if (name.length < 2) return { error: "Name must be at least 2 characters." };
+
+  db.prepare("UPDATE users SET display_name = ? WHERE id = ?")
+    .run(name, user.id);
+  return { user: publicUser({ ...user, display_name: name }) };
+}
+
 const normalizeEmail = (email) => String(email).trim().toLowerCase();
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -54,13 +84,13 @@ function verifySignIn(email, code) {
 
   db.prepare("DELETE FROM login_codes WHERE id = ?").run(row.id);
 
-  // Find or create the user; default display name from the email local part.
+  // Find or create the user; default display name is generated, not
+  // email-derived (privacy).
   let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
   if (!user) {
-    const displayName = email.split("@")[0].slice(0, 40);
     const result = db.prepare(
       "INSERT INTO users (email, display_name) VALUES (?, ?)"
-    ).run(email, displayName);
+    ).run(email, generateDisplayName());
     user = db.prepare("SELECT * FROM users WHERE id = ?")
       .get(result.lastInsertRowid);
   }
@@ -114,5 +144,7 @@ module.exports = {
   verifySignIn,
   getUserForRequest,
   signOut,
+  setDisplayName,
+  generateDisplayName,
   publicUser
 };

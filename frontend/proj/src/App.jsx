@@ -161,17 +161,19 @@ function parseScript(script) {
   });
 }
 
-// "2026-06-07 16:10:24" (UTC from SQLite) -> "7 Jun ~7pm" in local time
+// "2026-06-07 16:10:24" (UTC from SQLite) -> "07/06/26 7pm" in local time
 function formatSubmitted(createdAt) {
   if (!createdAt) return "";
   const d = new Date(createdAt.replace(" ", "T") + "Z");
   if (isNaN(d)) return "";
   let h = d.getHours();
-  if (d.getMinutes() >= 30) h = (h + 1) % 24; // ~ nearest hour
+  if (d.getMinutes() >= 30) h = (h + 1) % 24; // nearest hour
   const ampm = h >= 12 ? "pm" : "am";
   const hr = h % 12 || 12;
-  const month = d.toLocaleString("en", { month: "short" });
-  return `${d.getDate()} ${month} ~${hr}${ampm}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy} ${hr}${ampm}`;
 }
 
 function renderFormatted(script) {
@@ -224,6 +226,8 @@ const [authStep, setAuthStep] = useState("email"); // email | code
 const [authEmail, setAuthEmail] = useState("");
 const [authCode, setAuthCode] = useState("");
 const [authError, setAuthError] = useState("");
+const [nameDraft, setNameDraft] = useState("");
+const [settingsNote, setSettingsNote] = useState("");
 const [topAnswers, setTopAnswers] = useState([]);
 const [answersVersion, setAnswersVersion] = useState(0);
 // Sort choice persists across pages (app-level state) and reloads (localStorage)
@@ -334,7 +338,12 @@ const renderMenu = () => (
         )}
         <div
           className="dc-menu-item" style={menuItemStyle}
-          onClick={() => setMenuNote("Settings are coming soon.")}
+          onClick={() => {
+            setMenuOpen(false);
+            setNameDraft(user ? user.displayName : "");
+            setSettingsNote("");
+            setPage("settings");
+          }}
         >
           Settings
         </div>
@@ -557,6 +566,77 @@ useEffect(() => {
   window.addEventListener("keydown", handleKey);
   return () => window.removeEventListener("keydown", handleKey);
 }, [text, page]);
+
+//SETTINGS PAGE
+if (page === "settings") {
+  return (
+    <div style={{ textAlign: "center", marginTop: 100, fontSize: 24 }}>
+      <div className="dc-card-page" style={containerStyle}>
+        {renderMenu()}
+        <br /><br />
+        <h2>Settings</h2>
+        {user ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setSettingsNote("");
+              try {
+                const token = localStorage.getItem("dotcomma_token");
+                const res = await fetch(`${API_URL}/api/me/display-name`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ displayName: nameDraft })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                  setSettingsNote(data.error || "Something went wrong.");
+                  return;
+                }
+                setUser(data.user);
+                setSettingsNote("Saved!");
+              } catch {
+                setSettingsNote("Could not reach the server.");
+              }
+            }}
+          >
+            <p style={{ fontSize: 16 }}>
+              Display name — shown next to your public answers.
+            </p>
+            <input
+              className="dc-input"
+              value={nameDraft}
+              maxLength={30}
+              onChange={(e) => setNameDraft(e.target.value)}
+              style={{
+                fontSize: 18,
+                padding: "8px 12px",
+                textAlign: "center",
+                width: 260,
+                margin: "10px 0"
+              }}
+            />
+            <br />
+            <button type="submit" className="dc-button" style={buttonStyle}>
+              Save
+            </button>
+          </form>
+        ) : (
+          <p style={{ fontSize: 16 }}>Sign in to change your display name.</p>
+        )}
+        {settingsNote && (
+          <p style={{ fontSize: 14, opacity: 0.8 }}>{settingsNote}</p>
+        )}
+        <br />
+        <button className="dc-button" style={buttonStyle} onClick={() => setPage("game")}>
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
 
 //ACCOUNT / SIGN-IN PAGE
 if (page === "account") {
@@ -906,7 +986,8 @@ return (
       <div
         key={i}
         style={{
-          color: i === stages.length - 1 ? "purple" : "inherit"
+          color: i === stages.length - 1 ? "var(--accent)" : "inherit",
+          marginBottom: 18
         }}
       >
         {renderFormatted(line)}
