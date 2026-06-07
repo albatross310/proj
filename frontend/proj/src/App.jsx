@@ -204,6 +204,12 @@ const [isTyping, setIsTyping] = useState(false);
 const [results, setResults] = useState([]);
 const [menuOpen, setMenuOpen] = useState(false);
 const [menuNote, setMenuNote] = useState("");
+//ACCOUNT STATE (spec Phase 2)
+const [user, setUser] = useState(null); // null = not signed in
+const [authStep, setAuthStep] = useState("email"); // email | code
+const [authEmail, setAuthEmail] = useState("");
+const [authCode, setAuthCode] = useState("");
+const [authError, setAuthError] = useState("");
 const [topAnswers, setTopAnswers] = useState([]);
 const [answersVersion, setAnswersVersion] = useState(0);
 const [promptIndex, setPromptIndex] = useState(0);
@@ -294,12 +300,24 @@ const renderMenu = () => (
           boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
         }}
       >
-        <div
-          style={menuItemStyle}
-          onClick={() => setMenuNote("Sign-in is coming soon.")}
-        >
-          Sign in
-        </div>
+        {user ? (
+          <div style={{ ...menuItemStyle, cursor: "default", opacity: 0.7, fontSize: 14 }}>
+            Signed in as <b>{user.displayName}</b>
+          </div>
+        ) : (
+          <div
+            style={menuItemStyle}
+            onClick={() => {
+              setMenuOpen(false);
+              setAuthStep("email");
+              setAuthError("");
+              setAuthCode("");
+              setPage("account");
+            }}
+          >
+            Sign in
+          </div>
+        )}
         <div
           style={menuItemStyle}
           onClick={() => setMenuNote("Settings are coming soon.")}
@@ -335,6 +353,11 @@ const renderMenu = () => (
         >
           Reset local progress
         </div>
+        {user && (
+          <div style={menuItemStyle} onClick={signOut}>
+            Sign out
+          </div>
+        )}
         {menuNote && (
           <p style={{ fontSize: 13, opacity: 0.6, padding: "0 14px 8px", margin: 0 }}>
             {menuNote}
@@ -366,6 +389,32 @@ useEffect(() => {
 useEffect(() => {
   if (page === "game") setRevealIndex(0);
 }, [page, promptIndex]);
+
+//RESTORE SESSION ON LOAD
+useEffect(() => {
+  const token = localStorage.getItem("dotcomma_token");
+  if (!token) return;
+  fetch(`${API_URL}/api/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then((res) => (res.ok ? res.json() : Promise.reject()))
+    .then((data) => setUser(data.user))
+    .catch(() => localStorage.removeItem("dotcomma_token"));
+}, []);
+
+//SIGN OUT
+const signOut = () => {
+  const token = localStorage.getItem("dotcomma_token");
+  if (token) {
+    fetch(`${API_URL}/api/auth/signout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    }).catch(() => {});
+  }
+  localStorage.removeItem("dotcomma_token");
+  setUser(null);
+  setMenuOpen(false);
+};
 
 //CLOSE MENU ON CLICK AWAY
 // Capture-phase listener: a click outside the open menu closes it and is
@@ -420,9 +469,14 @@ const submitAnswer = () => {
   setResultMessage(allGood ? "Good work!" : "Better luck next time :(");
 
   // Persist in the background; the game stays playable if this fails.
+  // Sends the session token when signed in so the answer links to the user.
+  const token = localStorage.getItem("dotcomma_token");
   fetch(`${API_URL}/api/answers`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
     body: JSON.stringify({
       promptKey: promptKeys[promptIndex],
       answerText: text,
@@ -439,7 +493,7 @@ const submitAnswer = () => {
 //ENTER AND BACKSPACE INPUT
 useEffect(() => {
   const handleKey = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && page === "game") {
       e.preventDefault();
       submitAnswer();
     }
@@ -451,6 +505,110 @@ useEffect(() => {
   window.addEventListener("keydown", handleKey);
   return () => window.removeEventListener("keydown", handleKey);
 }, [text, page]);
+
+//ACCOUNT / SIGN-IN PAGE
+if (page === "account") {
+  const inputStyle = {
+    fontSize: 18,
+    padding: "8px 12px",
+    textAlign: "center",
+    width: 260,
+    margin: "10px 0"
+  };
+  return (
+    <div style={{ textAlign: "center", marginTop: 100, fontSize: 24 }}>
+      <div style={containerStyle}>
+        {renderMenu()}
+        <br /><br />
+        <h2>Sign in</h2>
+        {authStep === "email" ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setAuthError("");
+              try {
+                const res = await fetch(`${API_URL}/api/auth/start`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: authEmail })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                  setAuthError(data.error || "Something went wrong.");
+                  return;
+                }
+                setAuthStep("code");
+              } catch {
+                setAuthError("Could not reach the server.");
+              }
+            }}
+          >
+            <p style={{ fontSize: 16 }}>
+              Enter your email and we will send you a sign-in code.
+            </p>
+            <input
+              type="email"
+              autoFocus
+              placeholder="you@example.com"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              style={inputStyle}
+            />
+            <br />
+            <button type="submit" style={buttonStyle}>Send code</button>
+          </form>
+        ) : (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setAuthError("");
+              try {
+                const res = await fetch(`${API_URL}/api/auth/verify`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: authEmail, code: authCode })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                  setAuthError(data.error || "Something went wrong.");
+                  return;
+                }
+                localStorage.setItem("dotcomma_token", data.token);
+                setUser(data.user);
+                setAuthCode("");
+                setPage("game");
+              } catch {
+                setAuthError("Could not reach the server.");
+              }
+            }}
+          >
+            <p style={{ fontSize: 16 }}>
+              We sent a 6-digit code to <b>{authEmail}</b>.
+            </p>
+            <input
+              autoFocus
+              inputMode="numeric"
+              placeholder="123456"
+              maxLength={6}
+              value={authCode}
+              onChange={(e) => setAuthCode(e.target.value)}
+              style={inputStyle}
+            />
+            <br />
+            <button type="submit" style={buttonStyle}>Sign in</button>
+          </form>
+        )}
+        {authError && (
+          <p style={{ color: "red", fontSize: 14 }}>{authError}</p>
+        )}
+        <br />
+        <button style={buttonStyle} onClick={() => setPage("game")}>
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
 
 //ABOUT PAGE
 if (page === "about") {
