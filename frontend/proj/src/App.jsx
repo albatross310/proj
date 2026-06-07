@@ -271,10 +271,19 @@ useEffect(() => {
 //TOP ANSWERS
 useEffect(() => {
   if (page !== "results") return;
-  fetch(`${API_URL}/api/prompts/${promptKeys[promptIndex]}/top-answers`)
+  // Abort any in-flight fetch when this re-runs (e.g. when the just-
+  // submitted answer finishes saving), so a stale response can't
+  // overwrite the fresh list.
+  const controller = new AbortController();
+  fetch(`${API_URL}/api/prompts/${promptKeys[promptIndex]}/top-answers`, {
+    signal: controller.signal
+  })
     .then((res) => res.json())
     .then((data) => setTopAnswers(data.answers || []))
-    .catch(() => setTopAnswers([]));
+    .catch((err) => {
+      if (err.name !== "AbortError") setTopAnswers([]);
+    });
+  return () => controller.abort();
 }, [page, promptIndex, answersVersion]);
 
 //SUBMIT ANSWER
