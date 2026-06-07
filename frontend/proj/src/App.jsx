@@ -201,6 +201,8 @@ const [resultMessage, setResultMessage] = useState("");
 const inputRef = useRef(null);
 const [isTyping, setIsTyping] = useState(false);
 const [results, setResults] = useState([]);
+const [topAnswers, setTopAnswers] = useState([]);
+const [answersVersion, setAnswersVersion] = useState(0);
 const [promptIndex, setPromptIndex] = useState(0);
 const [introIndex, setIntroIndex] = useState(0);
 const [revealIndex, setRevealIndex] = useState(0);
@@ -266,6 +268,15 @@ useEffect(() => {
   if (page === "game") setRevealIndex(0);
 }, [page, promptIndex]);
 
+//TOP ANSWERS
+useEffect(() => {
+  if (page !== "results") return;
+  fetch(`${API_URL}/api/prompts/${promptKeys[promptIndex]}/top-answers`)
+    .then((res) => res.json())
+    .then((data) => setTopAnswers(data.answers || []))
+    .catch(() => setTopAnswers([]));
+}, [page, promptIndex, answersVersion]);
+
 //SUBMIT ANSWER
 const submitAnswer = () => {
   if (!text.trim()) return;
@@ -294,7 +305,9 @@ const submitAnswer = () => {
       answerText: text,
       visibility: "public"
     })
-  }).catch((err) => console.error("Could not save answer:", err));
+  })
+    .then(() => setAnswersVersion((v) => v + 1)) // refresh top answers
+    .catch((err) => console.error("Could not save answer:", err));
 
   setText("");
   setPage("results");
@@ -412,6 +425,31 @@ return (
         </span>
       ))}
     </div>
+    {topAnswers.length > 0 && (
+      <div style={{ textAlign: "left", fontSize: 16, marginBottom: 30 }}>
+        <p style={{ opacity: 0.7 }}>Other players wrote:</p>
+        {topAnswers.map((a) => (
+          <div
+            key={a.id}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              padding: "8px 12px",
+              marginBottom: 8
+            }}
+          >
+            <div>“{a.answer_text}”</div>
+            <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>
+              {a.anonymous_name}
+              {" · "}
+              {a.all_words_valid ? "all words valid" : "some words off-list"}
+              {" · "}
+              {a.score} pts
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
     <button
       style={buttonStyle}
       onClick={() => {

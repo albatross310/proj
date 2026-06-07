@@ -70,6 +70,21 @@ app.post("/api/answers", async (request, reply) => {
   return { answer, validation };
 });
 
+// Public top answers for a prompt, best score first then newest.
+// Only exposes display-safe fields (spec: never expose email/user ids).
+app.get("/api/prompts/:promptKey/top-answers", async (request) => {
+  const answers = db.prepare(`
+    SELECT id, anonymous_name, answer_text,
+           all_words_valid, score, created_at
+    FROM answers
+    WHERE prompt_key = ? AND visibility = 'public'
+    ORDER BY score DESC, created_at DESC
+    LIMIT 10
+  `).all(request.params.promptKey);
+
+  return { answers };
+});
+
 app.listen({port: 3000, host: "0.0.0.0" }, () => {  // s1
     console.log("http://localhost:3000");
 });
