@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";  
-import { io } from "socket.io-client"; 
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 import { useRef } from "react";
+import "./App.css";
 
 const API_URL = import.meta.env.DEV
   ? "http://localhost:3000"
@@ -117,7 +118,7 @@ const introPages = [
   <>Its goal is to build a <b>shared language</b>.<br /><br /> </>,
   <>Day 1 teaches the basic moves.<br /><br /></>,
   <>
-    <span style = {{fontSize: 16}}>
+    <span className="dc-hint" style = {{fontSize: 16}}>
       CLICK ANYWHERE TO CONTINUE
     </span>
 </>
@@ -220,25 +221,23 @@ const tokens = text.match(/[a-z]+|./gi) || [];
 const words = mergeWords(tokens).map(w => w.toLowerCase());
 const getColor = (t) => {
   if (/^[a-z]+$/i.test(t)) {
-    return allowedWords.has(t.toLowerCase()) ? "green" : "red";
+    return allowedWords.has(t.toLowerCase()) ? "#15803d" : "#e11d48";
   }
-  if ([".", ",", "?"].includes(t)) return "blue";
-  return "red";
+  if ([".", ",", "?"].includes(t)) return "#0e9aa7";
+  return "#e11d48";
 };
 const containerStyle = {
   width: "100%",
   maxWidth: 500,
   margin: "0 auto",
   padding: "0 20px",
-  border: "1px solid #ccc",
   minHeight: 500,
-  position: "relative"   // ← add this
+  position: "relative"
 };
 const boxStyle = {
   width: "100%",
   minHeight: 60,
   padding: 10,
-  border: "1px solid #ccc",
   boxSizing: "border-box",
   textAlign: "center"
 };
@@ -291,13 +290,10 @@ const renderMenu = () => (
     </button>
     {menuOpen && (
       <div
+        className="dc-menu-panel"
         style={{
-          background: "white",
-          border: "1px solid #ccc",
-          borderRadius: 6,
           textAlign: "left",
-          minWidth: 190,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+          minWidth: 190
         }}
       >
         {user ? (
@@ -306,7 +302,7 @@ const renderMenu = () => (
           </div>
         ) : (
           <div
-            style={menuItemStyle}
+            className="dc-menu-item" style={menuItemStyle}
             onClick={() => {
               setMenuOpen(false);
               setAuthStep("email");
@@ -319,13 +315,13 @@ const renderMenu = () => (
           </div>
         )}
         <div
-          style={menuItemStyle}
+          className="dc-menu-item" style={menuItemStyle}
           onClick={() => setMenuNote("Settings are coming soon.")}
         >
           Settings
         </div>
         <div
-          style={menuItemStyle}
+          className="dc-menu-item" style={menuItemStyle}
           onClick={() => {
             setMenuOpen(false);
             setPage("about");
@@ -334,13 +330,13 @@ const renderMenu = () => (
           About DotComma
         </div>
         <div
-          style={menuItemStyle}
+          className="dc-menu-item" style={menuItemStyle}
           onClick={() => setMenuNote("My answers is coming soon.")}
         >
           My answers
         </div>
         <div
-          style={menuItemStyle}
+          className="dc-menu-item" style={menuItemStyle}
           onClick={() => {
             setResults([]);
             setPromptIndex(0);
@@ -354,7 +350,7 @@ const renderMenu = () => (
           Reset local progress
         </div>
         {user && (
-          <div style={menuItemStyle} onClick={signOut}>
+          <div className="dc-menu-item" style={menuItemStyle} onClick={signOut}>
             Sign out
           </div>
         )}
@@ -517,7 +513,7 @@ if (page === "account") {
   };
   return (
     <div style={{ textAlign: "center", marginTop: 100, fontSize: 24 }}>
-      <div style={containerStyle}>
+      <div className="dc-card-page" style={containerStyle}>
         {renderMenu()}
         <br /><br />
         <h2>Sign in</h2>
@@ -549,13 +545,14 @@ if (page === "account") {
             <input
               type="email"
               autoFocus
+              className="dc-input"
               placeholder="you@example.com"
               value={authEmail}
               onChange={(e) => setAuthEmail(e.target.value)}
               style={inputStyle}
             />
             <br />
-            <button type="submit" style={buttonStyle}>Send code</button>
+            <button type="submit" className="dc-button" style={buttonStyle}>Send code</button>
           </form>
         ) : (
           <form
@@ -587,6 +584,7 @@ if (page === "account") {
             </p>
             <input
               autoFocus
+              className="dc-input"
               inputMode="numeric"
               placeholder="123456"
               maxLength={6}
@@ -595,14 +593,14 @@ if (page === "account") {
               style={inputStyle}
             />
             <br />
-            <button type="submit" style={buttonStyle}>Sign in</button>
+            <button type="submit" className="dc-button" style={buttonStyle}>Sign in</button>
           </form>
         )}
         {authError && (
           <p style={{ color: "red", fontSize: 14 }}>{authError}</p>
         )}
         <br />
-        <button style={buttonStyle} onClick={() => setPage("game")}>
+        <button className="dc-button" style={buttonStyle} onClick={() => setPage("game")}>
           Back
         </button>
       </div>
@@ -619,7 +617,7 @@ if (page === "about") {
     .map((p) => p.replace(/\s+/g, " ").trim())
     .filter(Boolean);
   return (
-    <div style={containerStyle}>{renderMenu()}<br/><br/>
+    <div className="dc-card-page" style={containerStyle}>{renderMenu()}<br/><br/>
       <h2>About DotComma</h2><br/>
       <div style={{ textAlign: "left" }}>
         {aboutParagraphs.map((p, i) => (
@@ -627,7 +625,7 @@ if (page === "about") {
         ))}
       </div>
       <br/>
-      <button style = {buttonStyle}
+      <button className="dc-button" style = {buttonStyle}
         onClick={() => setPage("intro")}>Back</button>
       <br/><br/>
     </div>
@@ -651,14 +649,14 @@ if (page === "intro") {
         cursor: "pointer"
       }}
     >
-      <div style={containerStyle}>
+      <div className="dc-card-page" style={containerStyle}>
         {renderMenu()}
-        <h2 style={{ fontSize: 32, color: "purple" }}>
-          <br/>Welcome to DotComma
+        <h2 style={{ fontSize: 32 }}>
+          <br/><span className="dc-title">Welcome to DotComma</span>
         </h2>
         <br />
         {introIndex === 0 ? (
-          <><span style = {{fontSize: 14}}> CLICK ANYWHERE TO CONTINUE</span> <br /><br /></>
+          <><span className="dc-hint" style = {{fontSize: 14}}> CLICK ANYWHERE TO CONTINUE</span> <br /><br /></>
         ) : (
           introPages.slice(0, introIndex).map((line, i) => (
             <div key={i} style={{ marginTop: 10 }}>
@@ -705,12 +703,12 @@ if (page === "results") {
   const resultWords = mergeWords(resultTokens);
 return (
 <div style={{ textAlign: "center", marginTop: 100, fontSize: 24,}}>
-  <div style = {containerStyle}>
+  <div className="dc-card-page" style = {containerStyle}>
     {renderMenu()}
     <h2 style={{ fontSize: 24, minHeight: 200 }}>
       <br/><br/>{resultMessage}
     </h2>
-    <div style={{
+    <div className="dc-typebox" style={{
       ...boxStyle,
       margin: "30px 0",
     }}>
@@ -721,7 +719,7 @@ return (
       ))}
     </div>
     <button
-      style={buttonStyle}
+      className="dc-button" style={buttonStyle}
       onClick={() => {
         if (promptIndex >= prompts.length - 1) {
           setPage("intro");
@@ -736,7 +734,7 @@ return (
       Continue
     </button>
     <button
-      style={buttonStyle}
+      className="dc-button" style={buttonStyle}
       onClick={() => setPage("game")}
     >
       Try Again
@@ -747,11 +745,10 @@ return (
         {topAnswers.map((a) => (
           <div
             key={a.id}
+            className="dc-answer-card"
             style={{
-              border: "1px solid #ddd",
-              borderRadius: 6,
-              padding: "8px 12px",
-              marginBottom: 8
+              padding: "10px 14px",
+              marginBottom: 10
             }}
           >
             <div>“{a.answer_text}”</div>
@@ -791,7 +788,7 @@ return (
     fontSize: 24
   }}
 >
-  <div style = {containerStyle}>
+  <div className="dc-card-page" style = {containerStyle}>
     {renderMenu()}
     <h2
       style={{
@@ -800,7 +797,7 @@ return (
     ><br/><br/>
       {headings[promptIndex]}
       {revealIndex === 0 && (
-        <p style={{ fontSize: 14, opacity: 0.6 }}>
+        <p className="dc-hint" style={{ fontSize: 14 }}>
           CLICK ANYWHERE TO CONTINUE
         </p>
       )}
@@ -830,6 +827,7 @@ return (
         inputRef.current?.focus();
         setIsTyping(true);
       }}        
+      className="dc-typebox"
       style={{
         ...boxStyle,
         margin: "30px 0",
@@ -864,13 +862,13 @@ return (
     />
   <div style={buttonRowStyle}>
     <button
-      style={buttonStyle}
+      className="dc-button" style={buttonStyle}
       onClick={submitAnswer}>
       Enter
     </button>
     {promptIndex > 0 && (
     <button
-      style={buttonStyle}
+      className="dc-button" style={buttonStyle}
       onClick={() => {
         setPromptIndex((i) => i - 1);
         setPage("results");
