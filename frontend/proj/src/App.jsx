@@ -237,14 +237,14 @@ const buttonStyle = {
   minWidth: 120
 };
 
-let timeout;
+const debounceRef = useRef(null);
 //DEBOUNCE
-useEffect(() => { 
-  clearTimeout(timeout);
-  timeout = setTimeout(() => {
+useEffect(() => {
+  clearTimeout(debounceRef.current);
+  debounceRef.current = setTimeout(() => {
     socket.emit("validate_text", text);
-  }, 100);  
-}, [text]); 
+  }, 100);
+}, [text]);
 
 //??
 useEffect(() => {  
@@ -259,28 +259,33 @@ useEffect(() => {
   if (page === "game") setRevealIndex(0);
 }, [page, promptIndex]);
 
+//SUBMIT ANSWER
+const submitAnswer = () => {
+  if (!text.trim()) return;
+
+  setResults((prev) => {
+    const copy = [...prev];
+    copy[promptIndex] = text;
+    return copy;
+  });
+
+  const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
+  const allGood =
+    wordList.length > 0 &&
+    wordList.every((w) => allowedWords.has(w.toLowerCase()));
+
+  setResultMessage(allGood ? "Good work!" : "Better luck next time :(");
+
+  setText("");
+  setPage("results");
+};
+
 //ENTER AND BACKSPACE INPUT
-useEffect(() => { 
+useEffect(() => {
   const handleKey = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (!text.trim()) return;
-
-      setResults((prev) => {
-        const copy = [...prev];
-        copy[promptIndex] = text;
-        return copy;
-      });
-
-      const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
-      const allGood =
-        wordList.length > 0 &&
-        wordList.every((w) => allowedWords.has(w.toLowerCase()));
-
-      setResultMessage(allGood ? "Good work!" : "Better luck next time :(");
-
-      setText("");
-      setPage("results");
+      submitAnswer();
     }
 
     if (e.key === "Backspace" && page === "results") {
@@ -504,23 +509,9 @@ return (
       }}
     />
   <div style={buttonRowStyle}>
-    <button 
+    <button
       style={buttonStyle}
-      onClick={() => {
-      if (!text.trim()) return;
-      setResults((prev) => {
-        const copy = [...prev];
-        copy[promptIndex] = text;
-        return copy;
-      });
-      const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
-      const allGood =
-        wordList.length > 0 &&
-        wordList.every((w) => allowedWords.has(w.toLowerCase()));
-      setResultMessage(allGood ? "Good work!" : "Better luck next time :(");
-      setText("");
-      setPage("results");
-    }}>
+      onClick={submitAnswer}>
       Enter
     </button>
     {promptIndex > 0 && (
