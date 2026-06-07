@@ -434,8 +434,29 @@ return (
         </span>
       ))}
     </div>
+    <button
+      style={buttonStyle}
+      onClick={() => {
+        if (promptIndex >= prompts.length - 1) {
+          setPage("intro");
+        } else {
+          setPromptIndex(i => i + 1);
+          setRevealIndex(0);
+          setText("");
+          setPage("game");
+        }
+      }}
+    >
+      Continue
+    </button>
+    <button
+      style={buttonStyle}
+      onClick={() => setPage("game")}
+    >
+      Try Again
+    </button>
     {topAnswers.length > 0 && (
-      <div style={{ textAlign: "left", fontSize: 16, marginBottom: 30 }}>
+      <div style={{ textAlign: "left", fontSize: 16, margin: "30px 0" }}>
         <p style={{ opacity: 0.7 }}>Other players wrote:</p>
         {topAnswers.map((a) => (
           <div
@@ -459,27 +480,6 @@ return (
         ))}
       </div>
     )}
-    <button
-      style={buttonStyle}
-      onClick={() => {
-        if (promptIndex >= prompts.length - 1) {
-          setPage("intro");
-        } else {
-          setPromptIndex(i => i + 1);
-          setRevealIndex(0);
-          setText("");
-          setPage("game");
-        }
-      }}
-    >
-      Continue
-    </button>
-    <button
-      style={buttonStyle}
-      onClick={() => setPage("game")}
-    >
-      Try Again
-    </button>
   </div>
 </div>
 );
@@ -512,7 +512,7 @@ return (
       }}
     ><br/><br/>
       {headings[promptIndex]}
-      {!fullDone && (
+      {revealIndex === 0 && (
         <p style={{ fontSize: 14, opacity: 0.6 }}>
           CLICK ANYWHERE TO CONTINUE
         </p>
