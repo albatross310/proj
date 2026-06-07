@@ -110,21 +110,62 @@ app.post("/api/answers", async (request, reply) => {
   return { answer, validation };
 });
 
-// Public top answers for a prompt, best score first then newest.
+// Public top answers for a prompt, with like counts.
+// ?sort=points (default: score, then newest) or ?sort=recent.
+// Sends likedByMe when called with a valid session token.
 // Only exposes display-safe fields (spec: never expose email/user ids).
 app.get("/api/prompts/:promptKey/top-answers", async (request) => {
+  const me = auth.getUserForRequest(request);
+  const orderBy =
+    request.query.sort === "recent"
+      ? "a.created_at DESC, a.id DESC"
+      : "a.score DESC, a.created_at DESC, a.id DESC";
+
   const answers = db.prepare(`
     SELECT a.id,
            COALESCE(u.display_name, a.anonymous_name) AS anonymous_name,
-           a.answer_text, a.all_words_valid, a.score, a.created_at
+           a.answer_text, a.all_words_valid, a.score, a.created_at,
+           COUNT(v.id) AS likes,
+           MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) AS likedByMe
     FROM answers a
     LEFT JOIN users u ON u.id = a.user_id
+    LEFT JOIN answer_votes v ON v.answer_id = a.id
     WHERE a.prompt_key = ? AND a.visibility = 'public'
-    ORDER BY a.score DESC, a.created_at DESC
+    GROUP BY a.id
+    ORDER BY ${orderBy}
     LIMIT 7
-  `).all(request.params.promptKey);
+  `).all(me ? me.id : -1, request.params.promptKey);
 
   return { answers };
+});
+
+// Toggle a like on an answer. Signed-in users only (spec Phase 6).
+app.post("/api/answers/:answerId/like", async (request, reply) => {
+  const me = auth.getUserForRequest(request);
+  if (!me) return reply.code(401).send({ error: "Sign in to like answers." });
+
+  const answer = db.prepare(
+    "SELECT id FROM answers WHERE id = ? AND visibility = 'public'"
+  ).get(request.params.answerId);
+  if (!answer) return reply.code(404).send({ error: "Answer not found." });
+
+  const existing = db.prepare(
+    "SELECT id FROM answer_votes WHERE answer_id = ? AND user_id = ?"
+  ).get(answer.id, me.id);
+
+  if (existing) {
+    db.prepare("DELETE FROM answer_votes WHERE id = ?").run(existing.id);
+  } else {
+    db.prepare(
+      "INSERT INTO answer_votes (answer_id, user_id) VALUES (?, ?)"
+    ).run(answer.id, me.id);
+  }
+
+  const { likes } = db.prepare(
+    "SELECT COUNT(*) AS likes FROM answer_votes WHERE answer_id = ?"
+  ).get(answer.id);
+
+  return { liked: !existing, likes };
 });
 
 // Dev-only: browse all stored answers in the browser.

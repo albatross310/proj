@@ -40,6 +40,14 @@ db.exec(`
     expires_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS answer_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    answer_id INTEGER NOT NULL REFERENCES answers(id),
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (answer_id, user_id)
+  );
+
   CREATE TABLE IF NOT EXISTS login_codes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL,
