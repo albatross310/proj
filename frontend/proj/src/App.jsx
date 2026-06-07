@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { io } from "socket.io-client"; 
 import { useRef } from "react";
 
-const socket = io(
-  import.meta.env.DEV
-    ? "http://localhost:3000"
-    : "https://proj-1o7w.onrender.com"
-);const merges = [
+const API_URL = import.meta.env.DEV
+  ? "http://localhost:3000"
+  : "https://proj-1o7w.onrender.com";
+
+const socket = io(API_URL);const merges = [
   ["be", "ing", "being"],
   ["see", "ing", "seeing"]
 ];
@@ -173,6 +173,13 @@ function renderFormatted(script) {
   ));
 }
 const gamePages = parseScript(script);
+// Stable key per prompt, e.g. "Rule 1: Be simple!" -> "rule-1-be-simple"
+const promptKeys = gamePages.map(p =>
+  p.heading
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+);
 const headings = gamePages.map(p => renderFormatted(p.heading));
 const prompts = gamePages.map(p => renderFormatted(p.prompt));
 const clue = gamePages.map(p => p.clue);
@@ -269,12 +276,25 @@ const submitAnswer = () => {
     return copy;
   });
 
+  // Local validation keeps the results page instant; the backend
+  // recomputes authoritatively for what gets saved.
   const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
   const allGood =
     wordList.length > 0 &&
     wordList.every((w) => allowedWords.has(w.toLowerCase()));
 
   setResultMessage(allGood ? "Good work!" : "Better luck next time :(");
+
+  // Persist in the background; the game stays playable if this fails.
+  fetch(`${API_URL}/api/answers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      promptKey: promptKeys[promptIndex],
+      answerText: text,
+      visibility: "public"
+    })
+  }).catch((err) => console.error("Could not save answer:", err));
 
   setText("");
   setPage("results");
@@ -526,6 +546,10 @@ return (
     </button>
     )}
   </div>
+
+  <p style={{ fontSize: 13, opacity: 0.6 }}>
+    Answers are shared with other players.
+  </p>
 
   {hints[promptIndex] !== "NA" && (
     <p>{hints[promptIndex]}</p>
