@@ -199,6 +199,7 @@ const [submitted, setSubmitted] = useState([]);
 const [page, setPage] = useState("game"); // intro, game, , results, about
 const [resultMessage, setResultMessage] = useState("");
 const inputRef = useRef(null);
+const menuRef = useRef(null);
 const [isTyping, setIsTyping] = useState(false);
 const [results, setResults] = useState([]);
 const [menuOpen, setMenuOpen] = useState(false);
@@ -257,6 +258,7 @@ const menuItemStyle = {
 // stopPropagation so menu clicks don't advance intro/game reveals.
 const renderMenu = () => (
   <div
+    ref={menuRef}
     onClick={(e) => e.stopPropagation()}
     style={{
       position: "absolute",
@@ -366,12 +368,18 @@ useEffect(() => {
 }, [page, promptIndex]);
 
 //CLOSE MENU ON CLICK AWAY
-// (clicks inside the menu stopPropagation, so they never reach window)
+// Capture-phase listener: a click outside the open menu closes it and is
+// swallowed before page handlers run, so it doesn't advance the game.
+// Clicks inside the menu (menuRef) pass through to the menu items.
 useEffect(() => {
   if (!menuOpen) return;
-  const close = () => setMenuOpen(false);
-  window.addEventListener("click", close);
-  return () => window.removeEventListener("click", close);
+  const close = (e) => {
+    if (menuRef.current && menuRef.current.contains(e.target)) return;
+    e.stopPropagation();
+    setMenuOpen(false);
+  };
+  window.addEventListener("click", close, true);
+  return () => window.removeEventListener("click", close, true);
 }, [menuOpen]);
 
 //TOP ANSWERS
