@@ -2,6 +2,7 @@ const Fastify = require("fastify");  // s1
 const { Server } = require("socket.io");  // s1
 const db = require("./db.js");
 const { validateText } = require("./words.js");
+const auth = require("./auth.js");
 
 const app = Fastify();  // s1
 
@@ -24,6 +25,39 @@ io.on("connection", (socket) => {  // s1
 
 app.get("/", async () => ({ ok: true}));  // s1
 
+// --- Auth (spec Phase 2): email-code sign-in ---
+
+app.post("/api/auth/start", async (request, reply) => {
+  const email = auth.normalizeEmail(request.body?.email || "");
+  if (!auth.isValidEmail(email)) {
+    return reply.code(400).send({ error: "Enter a valid email address." });
+  }
+  auth.startSignIn(email);
+  return { ok: true };
+});
+
+app.post("/api/auth/verify", async (request, reply) => {
+  const email = auth.normalizeEmail(request.body?.email || "");
+  const code = request.body?.code;
+  if (!auth.isValidEmail(email) || !code) {
+    return reply.code(400).send({ error: "Email and code are required." });
+  }
+  const result = auth.verifySignIn(email, code);
+  if (result.error) return reply.code(401).send({ error: result.error });
+  return result;
+});
+
+app.get("/api/me", async (request, reply) => {
+  const user = auth.getUserForRequest(request);
+  if (!user) return reply.code(401).send({ error: "Not signed in." });
+  return { user: auth.publicUser(user) };
+});
+
+app.post("/api/auth/signout", async (request) => {
+  auth.signOut(request);
+  return { ok: true };
+});
+
 // Submit an answer: validate server-side (authoritative), store, return both.
 app.post("/api/answers", async (request, reply) => {
   const { promptKey, answerText, visibility, anonymousName } = request.body || {};
@@ -45,17 +79,23 @@ app.post("/api/answers", async (request, reply) => {
   // Private unless the client explicitly opts in (spec: privacy-safe default).
   const vis = visibility === "public" ? "public" : "private";
 
+  // Attach the answer to the signed-in user when a valid token is sent.
+  const user = auth.getUserForRequest(request);
+
   const result = db.prepare(`
     INSERT INTO answers
-      (prompt_key, anonymous_name, answer_text,
+      (prompt_key, user_id, anonymous_name, answer_text,
        valid_word_count, invalid_word_count, all_words_valid,
        score, visibility)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     promptKey,
-    typeof anonymousName === "string" && anonymousName.trim()
-      ? anonymousName.trim().slice(0, 40)
-      : "Anonymous player",
+    user ? user.id : null,
+    user
+      ? user.display_name
+      : typeof anonymousName === "string" && anonymousName.trim()
+        ? anonymousName.trim().slice(0, 40)
+        : "Anonymous player",
     answerText.trim(),
     validation.validCount,
     validation.invalidCount,
@@ -74,11 +114,13 @@ app.post("/api/answers", async (request, reply) => {
 // Only exposes display-safe fields (spec: never expose email/user ids).
 app.get("/api/prompts/:promptKey/top-answers", async (request) => {
   const answers = db.prepare(`
-    SELECT id, anonymous_name, answer_text,
-           all_words_valid, score, created_at
-    FROM answers
-    WHERE prompt_key = ? AND visibility = 'public'
-    ORDER BY score DESC, created_at DESC
+    SELECT a.id,
+           COALESCE(u.display_name, a.anonymous_name) AS anonymous_name,
+           a.answer_text, a.all_words_valid, a.score, a.created_at
+    FROM answers a
+    LEFT JOIN users u ON u.id = a.user_id
+    WHERE a.prompt_key = ? AND a.visibility = 'public'
+    ORDER BY a.score DESC, a.created_at DESC
     LIMIT 10
   `).all(request.params.promptKey);
 
