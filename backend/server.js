@@ -1,3 +1,4 @@
+require("./env.js"); // load .env for local dev (Render injects env directly)
 const Fastify = require("fastify");  // s1
 const { Server } = require("socket.io");  // s1
 const db = require("./db.js");
@@ -32,7 +33,7 @@ app.post("/api/auth/start", async (request, reply) => {
   if (!auth.isValidEmail(email)) {
     return reply.code(400).send({ error: "Enter a valid email address." });
   }
-  auth.startSignIn(email);
+  await auth.startSignIn(email);
   return { ok: true };
 });
 

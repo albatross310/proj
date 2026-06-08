@@ -44,12 +44,36 @@ const normalizeEmail = (email) => String(email).trim().toLowerCase();
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-function sendCode(email, code) {
-  // Dev stand-in for email delivery.
+async function sendCode(email, code) {
+  // Real delivery via Resend when a key is configured; console otherwise.
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: process.env.MAIL_FROM || "DotComma <onboarding@resend.dev>",
+          to: [email],
+          subject: `${code} is your DotComma sign-in code`,
+          text:
+            `Your DotComma sign-in code is: ${code}\n\n` +
+            `It expires in ${CODE_TTL_MINUTES} minutes. ` +
+            `If you didn't request this, you can ignore it.`
+        })
+      });
+      if (res.ok) return;
+      console.error("[auth] Resend error:", res.status, await res.text());
+    } catch (err) {
+      console.error("[auth] email send failed:", err.message);
+    }
+  }
   console.log(`[auth] sign-in code for ${email}: ${code}`);
 }
 
-function startSignIn(email) {
+async function startSignIn(email) {
   const code = crypto.randomInt(100000, 1000000).toString();
 
   // One active code per email at a time.
@@ -59,7 +83,7 @@ function startSignIn(email) {
     VALUES (?, ?, datetime('now', '+${CODE_TTL_MINUTES} minutes'))
   `).run(email, sha256(code));
 
-  sendCode(email, code);
+  await sendCode(email, code);
 }
 
 // Returns { token, user } on success, or { error } on failure.
