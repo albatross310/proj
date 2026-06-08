@@ -59,6 +59,13 @@ const [authCode, setAuthCode] = useState("");
 const [authError, setAuthError] = useState("");
 const [nameDraft, setNameDraft] = useState("");
 const [settingsNote, setSettingsNote] = useState("");
+//REVEAL MODE (click-to-reveal on/off + option to hide its switch)
+const [revealMode, setRevealMode] = useState(
+  () => localStorage.getItem("dotcomma_reveal") !== "off"
+);
+const [hideRevealToggle, setHideRevealToggle] = useState(
+  () => localStorage.getItem("dotcomma_hide_reveal_toggle") === "1"
+);
 const [topAnswers, setTopAnswers] = useState([]);
 const [answersVersion, setAnswersVersion] = useState(0);
 // Sort choice persists across pages (app-level state) and reloads (localStorage)
@@ -461,6 +468,23 @@ if (page === "settings") {
           <p style={{ fontSize: 14, opacity: 0.8 }}>{settingsNote}</p>
         )}
         <br />
+        <label className="dc-switch" style={{ fontSize: 15 }}>
+          <input
+            type="checkbox"
+            checked={!hideRevealToggle}
+            onChange={(e) => {
+              const show = e.target.checked;
+              setHideRevealToggle(!show);
+              localStorage.setItem(
+                "dotcomma_hide_reveal_toggle",
+                show ? "" : "1"
+              );
+            }}
+          />
+          <span className="track" />
+          Show the click-to-reveal switch on game pages
+        </label>
+        <br /><br />
         <button className="dc-button" style={buttonStyle} onClick={() => setPage("game")}>
           Back
         </button>
@@ -786,7 +810,11 @@ const stages = [
   ...gamePages[promptIndex].intro,
   gamePages[promptIndex].prompt
 ];
-const fullDone = revealIndex >= stages.length;
+// With reveal mode on, the clue/typing area below the prompt takes one
+// further click (revealIndex > stages.length). With it off, show it all.
+const revealAll = !revealMode;
+const textShown = revealAll ? stages.length : Math.min(revealIndex, stages.length);
+const fullDone = revealAll || revealIndex > stages.length;
 return (
 <div
   onClick={() => {
@@ -802,18 +830,37 @@ return (
 >
   <div className="dc-card-page" style = {containerStyle}>
     {renderMenu()}
+    {!hideRevealToggle && (
+      <label
+        className="dc-switch"
+        onClick={(e) => e.stopPropagation()}
+        style={{ position: "absolute", top: 16, left: 18, zIndex: 5 }}
+      >
+        <input
+          type="checkbox"
+          checked={revealMode}
+          onChange={(e) => {
+            const on = e.target.checked;
+            setRevealMode(on);
+            localStorage.setItem("dotcomma_reveal", on ? "on" : "off");
+          }}
+        />
+        <span className="track" />
+        Click to reveal
+      </label>
+    )}
     <h2
       style={{
         minHeight: 200
       }}
     ><br/><br/>
       {headings[promptIndex]}
-      {revealIndex === 0 && (
+      {!revealAll && revealIndex === 0 && (
         <p className="dc-hint" style={{ fontSize: 14 }}>
           CLICK ANYWHERE TO CONTINUE
         </p>
       )}
-    {stages.slice(0, revealIndex).map((line, i) => (
+    {stages.slice(0, textShown).map((line, i) => (
       <div
         key={i}
         style={{
@@ -824,6 +871,11 @@ return (
         {renderFormatted(line)}
       </div>
     ))}
+    {!revealAll && revealIndex === stages.length && (
+      <p className="dc-hint" style={{ fontSize: 14 }}>
+        CLICK TO PLAY
+      </p>
+    )}
     </h2>
     {fullDone && ( <> {/*wraps remainder of output HINT */}
     <h2>
