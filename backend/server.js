@@ -48,6 +48,19 @@ app.post("/api/auth/verify", async (request, reply) => {
   return result;
 });
 
+// Email + password: signs up, logs in, or sets a password on a
+// legacy code-only account.
+app.post("/api/auth/password", async (request, reply) => {
+  const email = auth.normalizeEmail(request.body?.email || "");
+  const password = request.body?.password;
+  if (!auth.isValidEmail(email)) {
+    return reply.code(400).send({ error: "Enter a valid email address." });
+  }
+  const result = await auth.passwordSignIn(email, password);
+  if (result.error) return reply.code(401).send({ error: result.error });
+  return result;
+});
+
 app.get("/api/me", async (request, reply) => {
   const user = await auth.getUserForRequest(request);
   if (!user) return reply.code(401).send({ error: "Not signed in." });

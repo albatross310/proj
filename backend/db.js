@@ -75,6 +75,9 @@ async function init() {
       outcome TEXT PRIMARY KEY,
       last_index INTEGER NOT NULL DEFAULT -1
     );
+
+    -- Optional password sign-in (added after users table first shipped).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
   `);
 }
 
