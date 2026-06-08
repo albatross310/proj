@@ -1,0 +1,23 @@
+name: Keep backend awake
+
+# Render's free tier sleeps after ~15 min idle, making the next visit
+# take ~30-50s and sometimes 500 on cold start. This pings the health
+# endpoint to keep it warm. Each run fires several pings spaced out to
+# ride over GitHub's occasional cron-schedule delays.
+on:
+  schedule:
+    - cron: "*/10 * * * *" # every 10 minutes
+  workflow_dispatch: {} # allow manual run from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          URL="https://proj-1o7w.onrender.com/"
+          for i in 1 2 3 4; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$URL" || echo "000")
+            echo "ping $i -> HTTP $code"
+            if [ "$i" -lt 4 ]; then sleep 120; fi
+          done
