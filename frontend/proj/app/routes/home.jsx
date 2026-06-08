@@ -6,7 +6,7 @@ export function meta() {
     "DotComma is a playful language game: solve lines using only short, " +
     "plain words. The onboarding layer for a low-friction bridge-language " +
     "community.";
-  const url = "https://projprod.vercel.app/";
+  const url = "https://dotcomma.vercel.app/";
   return [
     { title },
     { name: "description", content: description },
