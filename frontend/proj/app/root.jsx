@@ -14,10 +14,29 @@ export function Layout({ children }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="theme-color" content="#1f8a5b" />
         <Meta />
         <Links />
       </head>
       <body>
+        <h1
+          style={{
+            position: "absolute",
+            width: 1,
+            height: 1,
+            padding: 0,
+            margin: -1,
+            overflow: "hidden",
+            clip: "rect(0 0 0 0)",
+            whiteSpace: "nowrap",
+            border: 0
+          }}
+        >
+          DotComma — a constrained-language game for writing in short, plain words
+        </h1>
         <div id="root">{children}</div>
         <ScrollRestoration />
         <Scripts />
