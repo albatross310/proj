@@ -20,6 +20,22 @@ const API_URL = import.meta.env.DEV
 
 const socket = io(API_URL);
 
+// Playful results-page titles, cycled each round so they alternate.
+const WIN_MESSAGES = [
+  "Sweet as! 🌴",
+  "Clean as a creek! 🌿",
+  "Crystal clear! 🌊",
+  "You little ripper! ✨",
+  "Smooth sailing! ⛵"
+];
+const LOSE_MESSAGES = [
+  "So close — paddle back out! 🌊",
+  "Almost — catch the next wave! 🏄",
+  "Nearly! Dust off the sand. 🏖️",
+  "Not quite — have another crack! 🐨",
+  "Give it another go! 🌴"
+];
+
 // UTC timestamp ("2026-06-07 16:10:24" or ISO "2026-06-07T16:10:24.000Z")
 // -> "07/06/26 7pm" in local time
 function formatSubmitted(createdAt) {
@@ -53,6 +69,8 @@ const inputRef = useRef(null);
 const menuRef = useRef(null);
 const returnPageRef = useRef("game"); // where to go back to after account/settings
 const prevPageRef = useRef("game");
+const resultMsgRef = useRef(0); // cycles through the playful result titles
+const tryAgainRef = useRef(false); // retry: skip the reveal, go straight to typing
 const [isTyping, setIsTyping] = useState(false);
 const [results, setResults] = useState([]);
 const [menuOpen, setMenuOpen] = useState(false);
@@ -257,11 +275,20 @@ useEffect(() => {
 //RESET
 // Restart the reveal only when arriving from a round boundary
 // (results/intro) — returning from account/settings keeps progress.
+// On a retry of the same prompt, skip the reveal entirely.
 useEffect(() => {
   const from = prevPageRef.current;
   prevPageRef.current = page;
   if (page === "game" && (from === "results" || from === "intro")) {
-    setRevealIndex(0);
+    if (tryAgainRef.current) {
+      // Jump past the last stage so the typing box is shown immediately.
+      const introCount = gamePages[promptIndex].intro.length;
+      const hasClue = clue[promptIndex] && clue[promptIndex] !== "NA";
+      setRevealIndex(introCount + 1 + (hasClue ? 1 : 0) + 1);
+    } else {
+      setRevealIndex(0);
+    }
+    tryAgainRef.current = false;
     setIsTyping(false); // stale isTyping blocked click-to-reveal
   }
 }, [page, promptIndex]);
@@ -377,17 +404,21 @@ const submitAnswer = () => {
     return copy;
   });
 
-  // Local validation keeps the results page instant; the backend
-  // recomputes authoritatively for what gets saved.
+  // Local validation for the immediate fallback title; the backend
+  // recomputes authoritatively and chooses the rotating message.
   const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
   const allGood =
     wordList.length > 0 &&
     wordList.every((w) => allowedWords.has(w.toLowerCase()));
 
-  setResultMessage(allGood ? "Good work!" : "Better luck next time :(");
+  const clientFallback = () => {
+    const pool = allGood ? WIN_MESSAGES : LOSE_MESSAGES;
+    const i = resultMsgRef.current++;
+    setResultMessage(pool[i % pool.length]);
+  };
 
-  // Persist in the background; the game stays playable if this fails.
-  // Sends the session token when signed in so the answer links to the user.
+  // Persist + get the rotating result title from the backend. Sends the
+  // session token when signed in so the answer links to the user.
   const token = localStorage.getItem("dotcomma_token");
   fetch(`${API_URL}/api/answers`, {
     method: "POST",
@@ -398,12 +429,27 @@ const submitAnswer = () => {
     body: JSON.stringify({
       promptKey: promptKeys[promptIndex],
       answerText: text,
-      visibility: "public"
+      visibility: "public",
+      winCount: WIN_MESSAGES.length,
+      loseCount: LOSE_MESSAGES.length
     })
   })
-    .then(() => setAnswersVersion((v) => v + 1)) // refresh top answers
-    .catch((err) => console.error("Could not save answer:", err));
+    .then((res) => res.json())
+    .then((data) => {
+      const pool = data.outcome === "win" ? WIN_MESSAGES : LOSE_MESSAGES;
+      if (typeof data.resultMessageIndex === "number") {
+        setResultMessage(pool[data.resultMessageIndex % pool.length]);
+      } else {
+        clientFallback();
+      }
+      setAnswersVersion((v) => v + 1); // refresh top answers
+    })
+    .catch((err) => {
+      console.error("Could not save answer:", err);
+      clientFallback();
+    });
 
+  setResultMessage(""); // filled in once the backend responds
   setText("");
   setPage("results");
 };
@@ -417,6 +463,7 @@ useEffect(() => {
     }
 
     if (e.key === "Backspace" && page === "results") {
+      tryAgainRef.current = true; // back to the same prompt, already revealed
       setPage("game");
     }
   };
@@ -741,7 +788,10 @@ return (
     </button>
     <button
       className="dc-button" style={buttonStyle}
-      onClick={() => setPage("game")}
+      onClick={() => {
+        tryAgainRef.current = true; // same prompt, skip the reveal
+        setPage("game");
+      }}
     >
       Try Again
     </button>

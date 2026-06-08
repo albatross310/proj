@@ -68,6 +68,13 @@ async function init() {
       expires_at TIMESTAMPTZ NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Tracks the last-shown result-message index per outcome ('win'/'lose')
+    -- so the playful titles rotate randomly without repeating back to back.
+    CREATE TABLE IF NOT EXISTS message_state (
+      outcome TEXT PRIMARY KEY,
+      last_index INTEGER NOT NULL DEFAULT -1
+    );
   `);
 }
 
