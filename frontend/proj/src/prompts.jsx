@@ -36,7 +36,7 @@ export function parseScript(script) {
         .split("\n")
         .map(x => x.trim())
         .filter(Boolean),
-      prompt: prompt + "\n",
+      prompt,
       clue,
       correct,
       answers: answers ? answers.split(";").map(a =>

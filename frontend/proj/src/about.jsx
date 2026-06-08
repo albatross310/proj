@@ -38,7 +38,7 @@ export const introPages = [
   <>Players solve lines in <b>short words</b>. <br /><br /> </>,
   <>DotComma helps thinkers <b>write with zest</b>.<br /><br /> </>,
   <>Its goal is to build a <b>shared language</b>.<br /><br /> </>,
-  <>Day 1 teaches the basic moves.<br /><br /></>,
+  <>Day 1 teaches the basic moves.<br /></>,
   <>
     <span className="dc-hint" style = {{fontSize: 16}}>
       CLICK ANYWHERE TO CONTINUE
