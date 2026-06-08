@@ -574,85 +574,59 @@ if (page === "account") {
         {renderMenu()}
         <br /><br />
         <h2>Sign in</h2>
-        {authStep === "email" ? (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setAuthError("");
-              try {
-                const res = await fetch(`${API_URL}/api/auth/start`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ email: authEmail })
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                  setAuthError(data.error || "Something went wrong.");
-                  return;
-                }
-                setAuthStep("code");
-              } catch {
-                setAuthError("Could not reach the server.");
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setAuthError("");
+            try {
+              const res = await fetch(`${API_URL}/api/auth/password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: authEmail,
+                  password: authCode
+                })
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                setAuthError(data.error || "Something went wrong.");
+                return;
               }
-            }}
-          >
-            <p style={{ fontSize: 16 }}>
-              Enter your email and we will send you a sign-in code.
-            </p>
-            <input
-              type="email"
-              autoFocus
-              className="dc-input"
-              placeholder="you@example.com"
-              value={authEmail}
-              onChange={(e) => setAuthEmail(e.target.value)}
-              style={inputStyle}
-            />
-            <br />
-            <button type="submit" className="dc-button" style={buttonStyle}>Send code</button>
-          </form>
-        ) : (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setAuthError("");
-              try {
-                const res = await fetch(`${API_URL}/api/auth/verify`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ email: authEmail, code: authCode })
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                  setAuthError(data.error || "Something went wrong.");
-                  return;
-                }
-                localStorage.setItem("dotcomma_token", data.token);
-                setUser(data.user);
-                setAuthCode("");
-                setPage(returnPageRef.current || "game");
-              } catch {
-                setAuthError("Could not reach the server.");
-              }
-            }}
-          >
-            <p style={{ fontSize: 16 }}>
-              We sent a 6-digit code to <b>{authEmail}</b>.
-            </p>
-            <input
-              autoFocus
-              className="dc-input"
-              inputMode="numeric"
-              placeholder="123456"
-              maxLength={6}
-              value={authCode}
-              onChange={(e) => setAuthCode(e.target.value)}
-              style={inputStyle}
-            />
-            <br />
-            <button type="submit" className="dc-button" style={buttonStyle}>Sign in</button>
-          </form>
-        )}
+              localStorage.setItem("dotcomma_token", data.token);
+              setUser(data.user);
+              setAuthCode("");
+              setPage(returnPageRef.current || "game");
+            } catch {
+              setAuthError("Could not reach the server.");
+            }
+          }}
+        >
+          <p style={{ fontSize: 16 }}>
+            New here? Just pick a password to create your account.
+          </p>
+          <input
+            type="email"
+            autoFocus
+            className="dc-input"
+            placeholder="you@example.com"
+            value={authEmail}
+            onChange={(e) => setAuthEmail(e.target.value)}
+            style={inputStyle}
+          />
+          <br />
+          <input
+            type="password"
+            className="dc-input"
+            placeholder="password"
+            value={authCode}
+            onChange={(e) => setAuthCode(e.target.value)}
+            style={inputStyle}
+          />
+          <br />
+          <button type="submit" className="dc-button" style={buttonStyle}>
+            Sign in
+          </button>
+        </form>
         {authError && (
           <p style={{ color: "red", fontSize: 14 }}>{authError}</p>
         )}
@@ -713,7 +687,9 @@ if (page === "intro") {
         </h2>
         <br />
         {introIndex === 0 ? (
-          <><span className="dc-hint" style = {{fontSize: 14}}> CLICK ANYWHERE TO CONTINUE</span> <br /><br /></>
+          <div className="dc-hint" style={{ fontSize: 14, marginTop: 40 }}>
+            CLICK ANYWHERE TO CONTINUE
+          </div>
         ) : (
           <div style={{ fontSize: 20 }}>
             {introPages.slice(0, introIndex).map((line, i) => (

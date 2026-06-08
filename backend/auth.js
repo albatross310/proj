@@ -9,6 +9,68 @@ const MAX_CODE_ATTEMPTS = 5;
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 
+// Password hashing with Node's built-in scrypt (salted, no extra deps).
+// Stored as "salt:hash" hex.
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(":")) return false;
+  const [salt, hash] = stored.split(":");
+  const candidate = crypto.scryptSync(password, salt, 64).toString("hex");
+  const a = Buffer.from(hash, "hex");
+  const b = Buffer.from(candidate, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+async function issueSession(user) {
+  const token = crypto.randomBytes(32).toString("hex");
+  await db.query(`
+    INSERT INTO sessions (user_id, token_hash, expires_at)
+    VALUES ($1, $2, now() + interval '${SESSION_TTL_DAYS} days')
+  `, [user.id, sha256(token)]);
+  return token;
+}
+
+// Single email+password endpoint that signs up, logs in, or claims a
+// legacy (password-less) account. Returns { token, user } or { error }.
+async function passwordSignIn(email, password) {
+  if (typeof password !== "string" || password.length < 6) {
+    return { error: "Password must be at least 6 characters." };
+  }
+
+  let user = (
+    await db.query("SELECT * FROM users WHERE email = $1", [email])
+  ).rows[0];
+
+  if (!user) {
+    // New account.
+    user = (
+      await db.query(
+        "INSERT INTO users (email, display_name, password_hash) VALUES ($1, $2, $3) RETURNING *",
+        [email, await generateDisplayName(), hashPassword(password)]
+      )
+    ).rows[0];
+  } else if (user.password_hash) {
+    // Existing account with a password — verify it.
+    if (!verifyPassword(password, user.password_hash)) {
+      return { error: "Wrong password." };
+    }
+  } else {
+    // Legacy account (created via email code, no password yet) — set one.
+    await db.query(
+      "UPDATE users SET password_hash = $1 WHERE id = $2",
+      [hashPassword(password), user.id]
+    );
+  }
+
+  const token = await issueSession(user);
+  return { token, user: publicUser(user) };
+}
+
 // Default display names are generated, never derived from the email —
 // an email local part (e.g. "petergibson127") is identifying (spec: privacy).
 const NAME_FIRST = [
@@ -125,12 +187,7 @@ async function verifySignIn(email, code) {
     ).rows[0];
   }
 
-  const token = crypto.randomBytes(32).toString("hex");
-  await db.query(`
-    INSERT INTO sessions (user_id, token_hash, expires_at)
-    VALUES ($1, $2, now() + interval '${SESSION_TTL_DAYS} days')
-  `, [user.id, sha256(token)]);
-
+  const token = await issueSession(user);
   return { token, user: publicUser(user) };
 }
 
@@ -176,6 +233,7 @@ module.exports = {
   isValidEmail,
   startSignIn,
   verifySignIn,
+  passwordSignIn,
   getUserForRequest,
   signOut,
   setDisplayName,
