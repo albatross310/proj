@@ -1,4 +1,5 @@
 import App from "../App.jsx";
+import SiteFooter from "../SiteFooter.jsx";
 
 const SITE_URL = "https://dotcomma.com.au";
 const TITLE = "DotComma — a constrained-language game";
@@ -61,5 +62,10 @@ export function meta() {
 }
 
 export default function Home() {
-  return <App />;
+  return (
+    <>
+      <App />
+      <SiteFooter />
+    </>
+  );
 }
