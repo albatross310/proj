@@ -164,6 +164,47 @@ body {
   transform: scale(1.1);
 }
 
+/* sliding switch */
+.dc-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  user-select: none;
+}
+.dc-switch input {
+  display: none;
+}
+.dc-switch .track {
+  width: 38px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.dc-switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: left 0.2s ease;
+}
+.dc-switch input:checked + .track {
+  background: var(--accent);
+}
+.dc-switch input:checked + .track::after {
+  left: 20px;
+}
+
 @keyframes dc-pop {
   from {
     opacity: 0;
