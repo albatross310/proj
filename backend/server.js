@@ -43,42 +43,31 @@ app.post("/api/auth/verify", async (request, reply) => {
   if (!auth.isValidEmail(email) || !code) {
     return reply.code(400).send({ error: "Email and code are required." });
   }
-  const result = auth.verifySignIn(email, code);
+  const result = await auth.verifySignIn(email, code);
   if (result.error) return reply.code(401).send({ error: result.error });
   return result;
 });
 
 app.get("/api/me", async (request, reply) => {
-  const user = auth.getUserForRequest(request);
+  const user = await auth.getUserForRequest(request);
   if (!user) return reply.code(401).send({ error: "Not signed in." });
   return { user: auth.publicUser(user) };
 });
 
 app.post("/api/auth/signout", async (request) => {
-  auth.signOut(request);
+  await auth.signOut(request);
   return { ok: true };
 });
 
 // Change the signed-in user's display name (Settings).
 app.post("/api/me/display-name", async (request, reply) => {
-  const user = auth.getUserForRequest(request);
+  const user = await auth.getUserForRequest(request);
   if (!user) return reply.code(401).send({ error: "Not signed in." });
 
-  const result = auth.setDisplayName(user, request.body?.displayName);
+  const result = await auth.setDisplayName(user, request.body?.displayName);
   if (result.error) return reply.code(400).send({ error: result.error });
   return result;
 });
-
-// One-off migration: earlier users got their email local part as a
-// display name, which is identifying. Regenerate those.
-for (const u of db.prepare("SELECT * FROM users").all()) {
-  if (u.display_name === u.email.split("@")[0].slice(0, 40)) {
-    const fresh = auth.generateDisplayName();
-    db.prepare("UPDATE users SET display_name = ? WHERE id = ?")
-      .run(fresh, u.id);
-    console.log(`[migrate] renamed user ${u.id} to ${fresh}`);
-  }
-}
 
 // Submit an answer: validate server-side (authoritative), store, return both.
 app.post("/api/answers", async (request, reply) => {
@@ -102,15 +91,16 @@ app.post("/api/answers", async (request, reply) => {
   const vis = visibility === "public" ? "public" : "private";
 
   // Attach the answer to the signed-in user when a valid token is sent.
-  const user = auth.getUserForRequest(request);
+  const user = await auth.getUserForRequest(request);
 
-  const result = db.prepare(`
+  const { rows } = await db.query(`
     INSERT INTO answers
       (prompt_key, user_id, anonymous_name, answer_text,
        valid_word_count, invalid_word_count, all_words_valid,
        score, visibility)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING *
+  `, [
     promptKey,
     user ? user.id : null,
     user
@@ -124,12 +114,9 @@ app.post("/api/answers", async (request, reply) => {
     validation.allValid ? 1 : 0,
     score,
     vis
-  );
+  ]);
 
-  const answer = db.prepare("SELECT * FROM answers WHERE id = ?")
-    .get(result.lastInsertRowid);
-
-  return { answer, validation };
+  return { answer: rows[0], validation };
 });
 
 // Public top answers for a prompt, with like counts.
@@ -137,55 +124,65 @@ app.post("/api/answers", async (request, reply) => {
 // Sends likedByMe when called with a valid session token.
 // Only exposes display-safe fields (spec: never expose email/user ids).
 app.get("/api/prompts/:promptKey/top-answers", async (request) => {
-  const me = auth.getUserForRequest(request);
+  const me = await auth.getUserForRequest(request);
   const orderBy =
     request.query.sort === "recent"
       ? "a.created_at DESC, a.id DESC"
       : "a.score DESC, a.created_at DESC, a.id DESC";
 
-  const answers = db.prepare(`
+  const { rows } = await db.query(`
     SELECT a.id,
            COALESCE(u.display_name, a.anonymous_name) AS anonymous_name,
            a.answer_text, a.all_words_valid, a.score, a.created_at,
-           COUNT(v.id) AS likes,
-           MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) AS likedByMe
+           COUNT(v.id)::int AS likes,
+           MAX(CASE WHEN v.user_id = $1 THEN 1 ELSE 0 END)::int AS "likedByMe"
     FROM answers a
     LEFT JOIN users u ON u.id = a.user_id
     LEFT JOIN answer_votes v ON v.answer_id = a.id
-    WHERE a.prompt_key = ? AND a.visibility = 'public'
-    GROUP BY a.id
+    WHERE a.prompt_key = $2 AND a.visibility = 'public'
+    GROUP BY a.id, u.display_name
     ORDER BY ${orderBy}
     LIMIT 7
-  `).all(me ? me.id : -1, request.params.promptKey);
+  `, [me ? me.id : -1, request.params.promptKey]);
 
-  return { answers };
+  return { answers: rows };
 });
 
 // Toggle a like on an answer. Signed-in users only (spec Phase 6).
 app.post("/api/answers/:answerId/like", async (request, reply) => {
-  const me = auth.getUserForRequest(request);
+  const me = await auth.getUserForRequest(request);
   if (!me) return reply.code(401).send({ error: "Sign in to like answers." });
 
-  const answer = db.prepare(
-    "SELECT id FROM answers WHERE id = ? AND visibility = 'public'"
-  ).get(request.params.answerId);
+  const answer = (
+    await db.query(
+      "SELECT id FROM answers WHERE id = $1 AND visibility = 'public'",
+      [request.params.answerId]
+    )
+  ).rows[0];
   if (!answer) return reply.code(404).send({ error: "Answer not found." });
 
-  const existing = db.prepare(
-    "SELECT id FROM answer_votes WHERE answer_id = ? AND user_id = ?"
-  ).get(answer.id, me.id);
+  const existing = (
+    await db.query(
+      "SELECT id FROM answer_votes WHERE answer_id = $1 AND user_id = $2",
+      [answer.id, me.id]
+    )
+  ).rows[0];
 
   if (existing) {
-    db.prepare("DELETE FROM answer_votes WHERE id = ?").run(existing.id);
+    await db.query("DELETE FROM answer_votes WHERE id = $1", [existing.id]);
   } else {
-    db.prepare(
-      "INSERT INTO answer_votes (answer_id, user_id) VALUES (?, ?)"
-    ).run(answer.id, me.id);
+    await db.query(
+      "INSERT INTO answer_votes (answer_id, user_id) VALUES ($1, $2)",
+      [answer.id, me.id]
+    );
   }
 
-  const { likes } = db.prepare(
-    "SELECT COUNT(*) AS likes FROM answer_votes WHERE answer_id = ?"
-  ).get(answer.id);
+  const likes = (
+    await db.query(
+      "SELECT COUNT(*)::int AS likes FROM answer_votes WHERE answer_id = $1",
+      [answer.id]
+    )
+  ).rows[0].likes;
 
   return { liked: !existing, likes };
 });
@@ -197,12 +194,12 @@ if (process.env.NODE_ENV !== "production") {
   const maskEmail = (email) => (email ? "***@***" : null);
 
   app.get("/api/dev/answers", async (request) => {
-    const rows = db.prepare(`
+    const { rows } = await db.query(`
       SELECT a.*, u.display_name, u.email
       FROM answers a
       LEFT JOIN users u ON u.id = a.user_id
       ORDER BY a.id DESC
-    `).all();
+    `);
 
     if (request.query.full !== "1") {
       for (const row of rows) row.email = maskEmail(row.email);
@@ -211,6 +208,15 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-app.listen({port: 3000, host: "0.0.0.0" }, () => {  // s1
-    console.log("http://localhost:3000");
-});
+const PORT = process.env.PORT || 3000;
+
+db.init()
+  .then(() => {
+    app.listen({ port: PORT, host: "0.0.0.0" }, () => {
+      console.log(`http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Database init failed:", err);
+    process.exit(1);
+  });
