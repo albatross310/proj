@@ -1,6 +1,6 @@
 import App from "../App.jsx";
 
-const SITE_URL = "https://dotcomma2.vercel.app";
+const SITE_URL = "https://dotcomma.com.au";
 const TITLE = "DotComma — a constrained-language game";
 const DESCRIPTION =
   "DotComma is a playful language game: solve lines using only short, " +

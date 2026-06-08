@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dotcomma2.vercel.app/sitemap.xml
+Sitemap: https://dotcomma.com.au/sitemap.xml
