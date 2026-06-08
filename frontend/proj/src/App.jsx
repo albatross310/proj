@@ -20,10 +20,14 @@ const API_URL = import.meta.env.DEV
 
 const socket = io(API_URL);
 
-// "2026-06-07 16:10:24" (UTC from SQLite) -> "07/06/26 7pm" in local time
+// UTC timestamp ("2026-06-07 16:10:24" or ISO "2026-06-07T16:10:24.000Z")
+// -> "07/06/26 7pm" in local time
 function formatSubmitted(createdAt) {
   if (!createdAt) return "";
-  const d = new Date(createdAt.replace(" ", "T") + "Z");
+  const iso = createdAt.includes("T")
+    ? createdAt
+    : createdAt.replace(" ", "T") + "Z";
+  const d = new Date(iso);
   if (isNaN(d)) return "";
   let h = d.getHours();
   if (d.getMinutes() >= 30) h = (h + 1) % 24; // nearest hour
@@ -47,6 +51,8 @@ const [page, setPage] = useState("game"); // intro, game, , results, about
 const [resultMessage, setResultMessage] = useState("");
 const inputRef = useRef(null);
 const menuRef = useRef(null);
+const returnPageRef = useRef("game"); // where to go back to after account/settings
+const prevPageRef = useRef("game");
 const [isTyping, setIsTyping] = useState(false);
 const [results, setResults] = useState([]);
 const [menuOpen, setMenuOpen] = useState(false);
@@ -168,6 +174,7 @@ const renderMenu = () => (
               setAuthStep("email");
               setAuthError("");
               setAuthCode("");
+              returnPageRef.current = page;
               setPage("account");
             }}
           >
@@ -180,6 +187,7 @@ const renderMenu = () => (
             setMenuOpen(false);
             setNameDraft(user ? user.displayName : "");
             setSettingsNote("");
+            returnPageRef.current = page;
             setPage("settings");
           }}
         >
@@ -247,8 +255,12 @@ useEffect(() => {
 }, []);
 
 //RESET
+// Restart the reveal only when arriving from a round boundary
+// (results/intro) — returning from account/settings keeps progress.
 useEffect(() => {
-  if (page === "game") {
+  const from = prevPageRef.current;
+  prevPageRef.current = page;
+  if (page === "game" && (from === "results" || from === "intro")) {
     setRevealIndex(0);
     setIsTyping(false); // stale isTyping blocked click-to-reveal
   }
@@ -347,6 +359,13 @@ const likeAnswer = (answerId) => {
     )
     .catch(() => {});
 };
+
+//FOCUS TYPING BOX
+// As soon as the typing area is revealed, focus the hidden textarea so
+// the player can type without clicking the box first.
+useEffect(() => {
+  if (page === "game") inputRef.current?.focus();
+}, [page, revealIndex, promptIndex]);
 
 //SUBMIT ANSWER
 const submitAnswer = () => {
@@ -482,10 +501,10 @@ if (page === "settings") {
             }}
           />
           <span className="track" />
-          Show the click-to-reveal switch on game pages
+          Show the Progressive Reveal switch on game pages
         </label>
         <br /><br />
-        <button className="dc-button" style={buttonStyle} onClick={() => setPage("game")}>
+        <button className="dc-button" style={buttonStyle} onClick={() => setPage(returnPageRef.current || "game")}>
           Back
         </button>
       </div>
@@ -564,7 +583,7 @@ if (page === "account") {
                 localStorage.setItem("dotcomma_token", data.token);
                 setUser(data.user);
                 setAuthCode("");
-                setPage("game");
+                setPage(returnPageRef.current || "game");
               } catch {
                 setAuthError("Could not reach the server.");
               }
@@ -591,7 +610,7 @@ if (page === "account") {
           <p style={{ color: "red", fontSize: 14 }}>{authError}</p>
         )}
         <br />
-        <button className="dc-button" style={buttonStyle} onClick={() => setPage("game")}>
+        <button className="dc-button" style={buttonStyle} onClick={() => setPage(returnPageRef.current || "game")}>
           Back
         </button>
       </div>
@@ -649,11 +668,13 @@ if (page === "intro") {
         {introIndex === 0 ? (
           <><span className="dc-hint" style = {{fontSize: 14}}> CLICK ANYWHERE TO CONTINUE</span> <br /><br /></>
         ) : (
-          introPages.slice(0, introIndex).map((line, i) => (
-            <div key={i} style={{ marginTop: 10 }}>
-              {line}
-            </div>
-          ))
+          <div style={{ fontSize: 20 }}>
+            {introPages.slice(0, introIndex).map((line, i) => (
+              <div key={i} style={{ marginTop: 10 }}>
+                {line}
+              </div>
+            ))}
+          </div>
         )}
         <div
           style={{
@@ -667,13 +688,7 @@ if (page === "intro") {
         >
           For more information, see{" "}
           <span
-            className="no-advance"
-            style={{
-              color: "blue",
-              cursor: "pointer",
-              textDecoration: "underline",
-              fontSize: 18
-            }}
+            className="no-advance dc-about-link"
             onClick={(e) => {
               e.stopPropagation();
               setPage("about");
@@ -810,11 +825,14 @@ const stages = [
   ...gamePages[promptIndex].intro,
   gamePages[promptIndex].prompt
 ];
-// With reveal mode on, the clue/typing area below the prompt takes one
-// further click (revealIndex > stages.length). With it off, show it all.
+// With reveal mode on, each part below the prompt takes a further click:
+// text stages -> clue -> typing area. With it off, show everything.
 const revealAll = !revealMode;
 const textShown = revealAll ? stages.length : Math.min(revealIndex, stages.length);
-const fullDone = revealAll || revealIndex > stages.length;
+const hasClue = clue[promptIndex] && clue[promptIndex] !== "NA";
+const playAt = stages.length + (hasClue ? 1 : 0);
+const clueShown = hasClue && (revealAll || revealIndex > stages.length);
+const fullDone = revealAll || revealIndex > playAt;
 return (
 <div
   onClick={() => {
@@ -846,7 +864,7 @@ return (
           }}
         />
         <span className="track" />
-        Click to reveal
+        Progressive Reveal
       </label>
     )}
     <h2
@@ -863,30 +881,33 @@ return (
     {stages.slice(0, textShown).map((line, i) => (
       <div
         key={i}
+        className={i === stages.length - 1 ? "dc-shimmer" : undefined}
         style={{
-          color: i === stages.length - 1 ? "var(--accent)" : "inherit",
-          marginBottom: 18
+          marginBottom: i === stages.length - 1 ? 0 : 18
         }}
       >
         {renderFormatted(line)}
       </div>
     ))}
-    {!revealAll && revealIndex === stages.length && (
-      <p className="dc-hint" style={{ fontSize: 14 }}>
-        CLICK TO PLAY
-      </p>
-    )}
     </h2>
-    {fullDone && ( <> {/*wraps remainder of output HINT */}
+    {clueShown && (
     <h2>
-      {clue[promptIndex] && clue[promptIndex] !== "NA" &&
-        clue[promptIndex].split(" ").map((word, i) => (
-          <span key={i} style={{ marginRight: 10, letterSpacing: 2 }}>
-            {word}
-          </span>
-        ))
-      }
+      {clue[promptIndex].split(" ").map((word, i) => (
+        <span key={i} style={{ marginRight: 10, letterSpacing: 2 }}>
+          {word}
+        </span>
+      ))}
     </h2>
+    )}
+    {clueShown && !fullDone && (
+      <>
+        <br />
+        <p className="dc-hint" style={{ fontSize: 14 }}>
+          CLICK ANYWHERE TO CONTINUE
+        </p>
+      </>
+    )}
+    {fullDone && ( <> {/*wraps remainder of output HINT */}
     <div
       onClick={() => {
         inputRef.current?.focus();
@@ -898,9 +919,6 @@ return (
         margin: "30px 0",
         cursor: "text",
       }}>
-      {!isTyping && !text && (
-        <span style={{ color: "#888" }}>Type here...</span>
-      )}
       {words.map((t, i) => (
         <span
           key={i}
@@ -912,7 +930,7 @@ return (
           {t}
         </span>
       ))}
-      {!text && isTyping && <span>|</span>}
+      <span className="dc-caret">|</span>
     </div>
     <textarea //invisible box
       ref={inputRef}
@@ -944,7 +962,8 @@ return (
     )}
   </div>
 
-  <p style={{ fontSize: 13, opacity: 0.6 }}>
+  <br />
+  <p style={{ fontSize: 16, opacity: 0.7 }}>
     Answers are shared with other players.
   </p>
 
