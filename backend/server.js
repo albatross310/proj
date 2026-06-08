@@ -69,6 +69,33 @@ app.post("/api/me/display-name", async (request, reply) => {
   return result;
 });
 
+// Pick the next playful-message index for an outcome: random, but never
+// the same as the last one shown, and the position persists in the DB so
+// the rotation continues across reloads and players.
+async function nextMessageIndex(outcome, poolSize) {
+  const size = Number(poolSize);
+  if (!Number.isInteger(size) || size < 1) return 0;
+
+  const { rows } = await db.query(
+    "SELECT last_index FROM message_state WHERE outcome = $1", [outcome]
+  );
+  const last = rows.length ? rows[0].last_index : -1;
+
+  let idx = 0;
+  if (size > 1) {
+    do {
+      idx = Math.floor(Math.random() * size);
+    } while (idx === last);
+  }
+
+  await db.query(`
+    INSERT INTO message_state (outcome, last_index) VALUES ($1, $2)
+    ON CONFLICT (outcome) DO UPDATE SET last_index = EXCLUDED.last_index
+  `, [outcome, idx]);
+
+  return idx;
+}
+
 // Submit an answer: validate server-side (authoritative), store, return both.
 app.post("/api/answers", async (request, reply) => {
   const { promptKey, answerText, visibility, anonymousName } = request.body || {};
@@ -116,7 +143,14 @@ app.post("/api/answers", async (request, reply) => {
     vis
   ]);
 
-  return { answer: rows[0], validation };
+  // Rotating playful results title (frontend holds the actual strings).
+  const outcome = validation.allValid ? "win" : "lose";
+  const poolSize = outcome === "win"
+    ? request.body.winCount
+    : request.body.loseCount;
+  const resultMessageIndex = await nextMessageIndex(outcome, poolSize);
+
+  return { answer: rows[0], validation, outcome, resultMessageIndex };
 });
 
 // Public top answers for a prompt, with like counts.
