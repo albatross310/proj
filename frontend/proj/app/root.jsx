@@ -5,6 +5,7 @@ import {
   Scripts,
   ScrollRestoration
 } from "react-router";
+import { Analytics } from "@vercel/analytics/react";
 import "./index.css";
 import "./App.css";
 
@@ -38,6 +39,7 @@ export function Layout({ children }) {
           DotComma — a constrained-language game for writing in short, plain words
         </h1>
         <div id="root">{children}</div>
+        <Analytics />
         <ScrollRestoration />
         <Scripts />
       </body>

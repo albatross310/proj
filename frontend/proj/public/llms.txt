@@ -1,0 +1,23 @@
+# DotComma
+
+> DotComma is a constrained-language game: players rewrite lines using only
+> short, plain words from a small shared vocabulary. It is the playful
+> onboarding layer for a low-friction "bridge language" — a simple, shared
+> way to communicate across English, Mandarin, Vietnamese and other
+> language communities.
+
+## How it works
+- Each round gives you a line to rewrite using only allowed short words.
+- Valid words show green; off-list words show red.
+- All-valid answers score highest, with a small bonus for brevity.
+- After submitting you see other players' top answers and can like them.
+
+## Pages
+- [Play DotComma](https://dotcomma.com.au/): the game.
+- [About](https://dotcomma.com.au/about): the bridge-language vision.
+- [How to play](https://dotcomma.com.au/how-to-play): rules, scoring, vocabulary.
+
+## About
+DotComma is free to play in any web browser. It is an early-stage project
+exploring how a constrained, universal vocabulary can help people write and
+communicate more simply across languages.
