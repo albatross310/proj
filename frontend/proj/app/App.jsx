@@ -102,6 +102,7 @@ const [answersVersion, setAnswersVersion] = useState(0);
 // Sort choice persists across pages (app-level state) and reloads (localStorage)
 const [sortBy, setSortBy] = useState("points");
 const [likeNote, setLikeNote] = useState("");
+const [shareNote, setShareNote] = useState("");
 const [promptIndex, setPromptIndex] = useState(0);
 const [introIndex, setIntroIndex] = useState(0);
 const [revealIndex, setRevealIndex] = useState(0);
@@ -373,6 +374,30 @@ useEffect(() => {
     });
   return () => controller.abort();
 }, [page, promptIndex, answersVersion, sortBy]);
+
+//SHARE ANSWER — native share sheet on mobile, clipboard fallback elsewhere.
+const shareAnswer = async () => {
+  const answer = results[promptIndex] || "";
+  const url = "https://dotcomma.com.au";
+  const text =
+    `I wrote "${answer}" on DotComma — a word game about saying more ` +
+    `with short, plain words.`;
+  setShareNote("");
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      await navigator.share({ title: "DotComma", text, url });
+    } catch {
+      /* user cancelled — ignore */
+    }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    setShareNote("Copied! Paste it anywhere to share.");
+  } catch {
+    setShareNote("Share dotcomma.com.au with a friend!");
+  }
+};
 
 //SORT CHOICE + LIKES
 const changeSort = (s) => {
@@ -788,6 +813,15 @@ return (
     >
       Try Again
     </button>
+    <button
+      className="dc-button" style={buttonStyle}
+      onClick={shareAnswer}
+    >
+      Share
+    </button>
+    {shareNote && (
+      <p style={{ fontSize: 13, opacity: 0.7, marginTop: 10 }}>{shareNote}</p>
+    )}
     {topAnswers.length > 0 && (
       <div style={{ textAlign: "left", fontSize: 16, margin: "30px 0" }}>
         <div
