@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { useRef } from "react";
-import "./App.css";
 import { allowedWords, mergeWords } from "./words.js";
 import { aboutDotComma, introPages } from "./about.jsx";
 import {
@@ -18,7 +17,16 @@ const API_URL = import.meta.env.DEV
   ? "http://localhost:3000"
   : "https://proj-1o7w.onrender.com";
 
-const socket = io(API_URL);
+// Create the Socket.IO client lazily and only in the browser — at module
+// load on the server there is no WebSocket, and connecting during SSR
+// would break the render.
+let socket;
+function getSocket() {
+  if (!socket && typeof window !== "undefined") {
+    socket = io(API_URL);
+  }
+  return socket;
+}
 
 // Playful results-page titles, cycled each round so they alternate.
 const WIN_MESSAGES = [
@@ -83,19 +91,16 @@ const [authCode, setAuthCode] = useState("");
 const [authError, setAuthError] = useState("");
 const [nameDraft, setNameDraft] = useState("");
 const [settingsNote, setSettingsNote] = useState("");
+// Preferences below default deterministically (same on server + first
+// client render to avoid hydration mismatch); the stored values are
+// applied in an effect after mount.
 //REVEAL MODE (click-to-reveal on/off + option to hide its switch)
-const [revealMode, setRevealMode] = useState(
-  () => localStorage.getItem("dotcomma_reveal") !== "off"
-);
-const [hideRevealToggle, setHideRevealToggle] = useState(
-  () => localStorage.getItem("dotcomma_hide_reveal_toggle") === "1"
-);
+const [revealMode, setRevealMode] = useState(true);
+const [hideRevealToggle, setHideRevealToggle] = useState(false);
 const [topAnswers, setTopAnswers] = useState([]);
 const [answersVersion, setAnswersVersion] = useState(0);
 // Sort choice persists across pages (app-level state) and reloads (localStorage)
-const [sortBy, setSortBy] = useState(
-  () => localStorage.getItem("dotcomma_sort") || "points"
-);
+const [sortBy, setSortBy] = useState("points");
 const [likeNote, setLikeNote] = useState("");
 const [promptIndex, setPromptIndex] = useState(0);
 const [introIndex, setIntroIndex] = useState(0);
@@ -260,16 +265,18 @@ const debounceRef = useRef(null);
 useEffect(() => {
   clearTimeout(debounceRef.current);
   debounceRef.current = setTimeout(() => {
-    socket.emit("validate_text", text);
+    getSocket()?.emit("validate_text", text);
   }, 100);
 }, [text]);
 
-//??
-useEffect(() => {  
-  socket.on("validation_result", (data) => {
+//VALIDATION RESULTS FROM SERVER
+useEffect(() => {
+  const s = getSocket();
+  if (!s) return;
+  s.on("validation_result", (data) => {
     setValidated(data);
   });
-  return () => socket.off("validation_result");
+  return () => s.off("validation_result");
 }, []);
 
 //RESET
@@ -292,6 +299,16 @@ useEffect(() => {
     setIsTyping(false); // stale isTyping blocked click-to-reveal
   }
 }, [page, promptIndex]);
+
+//LOAD STORED PREFERENCES (after mount — keeps SSR/first render deterministic)
+useEffect(() => {
+  if (localStorage.getItem("dotcomma_reveal") === "off") setRevealMode(false);
+  if (localStorage.getItem("dotcomma_hide_reveal_toggle") === "1") {
+    setHideRevealToggle(true);
+  }
+  const storedSort = localStorage.getItem("dotcomma_sort");
+  if (storedSort) setSortBy(storedSort);
+}, []);
 
 //RESTORE SESSION ON LOAD
 useEffect(() => {
