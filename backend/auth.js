@@ -1,29 +1,36 @@
 // Email-code sign-in (spec Phase 2). Codes are hashed at rest and sent
 // via Resend when RESEND_API_KEY is set; printed to the console otherwise.
 const crypto = require("crypto");
+const { promisify } = require("util");
 const db = require("./db.js");
 
 const CODE_TTL_MINUTES = 10;
 const SESSION_TTL_DAYS = 30;
 const MAX_CODE_ATTEMPTS = 5;
+// Only rewrite last_seen_at this often, so a read-heavy session doesn't issue
+// a DB write on every authenticated request.
+const LAST_SEEN_THROTTLE = "5 minutes";
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 
+// Async scrypt — the sync variant blocks Fastify's single event loop for
+// ~50-100ms per call, serialising all requests during a sign-in.
+const scrypt = promisify(crypto.scrypt);
+
 // Password hashing with Node's built-in scrypt (salted, no extra deps).
 // Stored as "salt:hash" hex.
-function hashPassword(password) {
+async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  const hash = (await scrypt(password, salt, 64)).toString("hex");
   return `${salt}:${hash}`;
 }
 
-function verifyPassword(password, stored) {
+async function verifyPassword(password, stored) {
   if (!stored || !stored.includes(":")) return false;
   const [salt, hash] = stored.split(":");
-  const candidate = crypto.scryptSync(password, salt, 64).toString("hex");
+  const candidate = await scrypt(password, salt, 64);
   const a = Buffer.from(hash, "hex");
-  const b = Buffer.from(candidate, "hex");
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return a.length === candidate.length && crypto.timingSafeEqual(a, candidate);
 }
 
 async function issueSession(user) {
@@ -51,19 +58,19 @@ async function passwordSignIn(email, password) {
     user = (
       await db.query(
         "INSERT INTO users (email, display_name, password_hash) VALUES ($1, $2, $3) RETURNING *",
-        [email, await generateDisplayName(), hashPassword(password)]
+        [email, await generateDisplayName(), await hashPassword(password)]
       )
     ).rows[0];
   } else if (user.password_hash) {
     // Existing account with a password — verify it.
-    if (!verifyPassword(password, user.password_hash)) {
+    if (!(await verifyPassword(password, user.password_hash))) {
       return { error: "Wrong password." };
     }
   } else {
     // Legacy account (created via email code, no password yet) — set one.
     await db.query(
       "UPDATE users SET password_hash = $1 WHERE id = $2",
-      [hashPassword(password), user.id]
+      [await hashPassword(password), user.id]
     );
   }
 
@@ -107,7 +114,9 @@ const normalizeEmail = (email) => String(email).trim().toLowerCase();
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-async function sendCode(email, code) {
+// `purpose` only tweaks the wording — "sign-in" vs "password reset".
+async function sendCode(email, code, purpose = "sign-in") {
+  const label = purpose === "reset" ? "password reset" : "sign-in";
   // Real delivery via Resend when a key is configured; console otherwise.
   if (process.env.RESEND_API_KEY) {
     try {
@@ -120,9 +129,9 @@ async function sendCode(email, code) {
         body: JSON.stringify({
           from: process.env.MAIL_FROM || "DotComma <onboarding@resend.dev>",
           to: [email],
-          subject: `${code} is your DotComma sign-in code`,
+          subject: `${code} is your DotComma ${label} code`,
           text:
-            `Your DotComma sign-in code is: ${code}\n\n` +
+            `Your DotComma ${label} code is: ${code}\n\n` +
             `It expires in ${CODE_TTL_MINUTES} minutes. ` +
             `If you didn't request this, you can ignore it.`
         })
@@ -133,24 +142,24 @@ async function sendCode(email, code) {
       console.error("[auth] email send failed:", err.message);
     }
   }
-  console.log(`[auth] sign-in code for ${email}: ${code}`);
+  console.log(`[auth] ${label} code for ${email}: ${code}`);
 }
 
-async function startSignIn(email) {
+// Issue a fresh single-use code for an email (one active code at a time) and
+// email it. Shared by sign-in and password-reset.
+async function createAndSendCode(email, purpose = "sign-in") {
   const code = crypto.randomInt(100000, 1000000).toString();
-
-  // One active code per email at a time.
   await db.query("DELETE FROM login_codes WHERE email = $1", [email]);
   await db.query(`
     INSERT INTO login_codes (email, code_hash, expires_at)
     VALUES ($1, $2, now() + interval '${CODE_TTL_MINUTES} minutes')
   `, [email, sha256(code)]);
-
-  await sendCode(email, code);
+  await sendCode(email, code, purpose);
 }
 
-// Returns { token, user } on success, or { error } on failure.
-async function verifySignIn(email, code) {
+// Validate (and, on success, consume) a code for an email. Returns { ok: true }
+// or { error }. Enforces expiry and the per-code attempt cap.
+async function consumeLoginCode(email, code) {
   const { rows } = await db.query(`
     SELECT * FROM login_codes
     WHERE email = $1 AND expires_at > now()
@@ -172,6 +181,17 @@ async function verifySignIn(email, code) {
   }
 
   await db.query("DELETE FROM login_codes WHERE id = $1", [row.id]);
+  return { ok: true };
+}
+
+async function startSignIn(email) {
+  await createAndSendCode(email, "sign-in");
+}
+
+// Returns { token, user } on success, or { error } on failure.
+async function verifySignIn(email, code) {
+  const check = await consumeLoginCode(email, code);
+  if (check.error) return check;
 
   // Find or create the user; default display name is generated, not
   // email-derived (privacy).
@@ -191,6 +211,44 @@ async function verifySignIn(email, code) {
   return { token, user: publicUser(user) };
 }
 
+// --- Password reset (forgot-password). Emails a code; the user then sets a
+// new password with it. Reuses the login_codes machinery above. ---
+
+// Always resolves to { ok: true } even when the email is unknown, so the
+// endpoint can't be used to probe which emails have accounts.
+async function requestPasswordReset(email) {
+  const user = (
+    await db.query("SELECT id FROM users WHERE email = $1", [email])
+  ).rows[0];
+  if (user) await createAndSendCode(email, "reset");
+  return { ok: true };
+}
+
+// Verify the emailed code and set a new password. The account must already
+// exist (reset never creates one). Returns { token, user } or { error }.
+async function resetPassword(email, code, newPassword) {
+  if (typeof newPassword !== "string" || newPassword.length < 6) {
+    return { error: "Password must be at least 6 characters." };
+  }
+
+  const user = (
+    await db.query("SELECT * FROM users WHERE email = $1", [email])
+  ).rows[0];
+  // Run the code check regardless, so timing doesn't reveal account existence;
+  // a missing user still consumes/decrements the code like a wrong attempt.
+  const check = await consumeLoginCode(email, code);
+  if (check.error) return check;
+  if (!user) return { error: "Code expired or not requested. Start again." };
+
+  await db.query(
+    "UPDATE users SET password_hash = $1 WHERE id = $2",
+    [await hashPassword(newPassword), user.id]
+  );
+
+  const token = await issueSession(user);
+  return { token, user: publicUser(user) };
+}
+
 // Resolve a request's Bearer token to a user, or null.
 async function getUserForRequest(request) {
   const header = request.headers.authorization || "";
@@ -205,8 +263,12 @@ async function getUserForRequest(request) {
   const user = rows[0];
 
   if (user) {
+    // Throttled: only write when the stored value is actually stale, so a
+    // read-heavy session doesn't issue a DB write on every request.
     await db.query(
-      "UPDATE users SET last_seen_at = now() WHERE id = $1", [user.id]
+      `UPDATE users SET last_seen_at = now()
+       WHERE id = $1 AND last_seen_at < now() - interval '${LAST_SEEN_THROTTLE}'`,
+      [user.id]
     );
   }
   return user || null;
@@ -234,6 +296,8 @@ module.exports = {
   startSignIn,
   verifySignIn,
   passwordSignIn,
+  requestPasswordReset,
+  resetPassword,
   getUserForRequest,
   signOut,
   setDisplayName,

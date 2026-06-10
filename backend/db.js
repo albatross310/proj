@@ -17,6 +17,12 @@ const pool = new Pool({
   max: 5
 });
 
+// Neon drops idle connections; without this listener an error emitted on an
+// idle client is an unhandled 'error' event that can take the process down.
+pool.on("error", (err) => {
+  console.error("[db] idle client error:", err.message);
+});
+
 async function init() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -59,6 +65,17 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (answer_id, user_id)
     );
+
+    -- The top-answers query LEFT JOINs + GROUPs votes by answer_id, so index it.
+    -- (The UNIQUE(answer_id,user_id) index is leading-column answer_id too, but
+    -- a dedicated single-column index keeps the planner's choice obvious.)
+    CREATE INDEX IF NOT EXISTS idx_answer_votes_answer_id
+      ON answer_votes (answer_id);
+
+    -- FK lookups used when joining answers -> users and listing a user's sessions.
+    CREATE INDEX IF NOT EXISTS idx_answers_user_id ON answers (user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
+    CREATE INDEX IF NOT EXISTS idx_login_codes_email ON login_codes (email);
 
     CREATE TABLE IF NOT EXISTS login_codes (
       id SERIAL PRIMARY KEY,
