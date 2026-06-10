@@ -14,15 +14,18 @@
 >   removed dead deps `framer-motion` + `@vitejs/plugin-react` (R3) and dead
 >   state `submitted`/`authStep` (R2); hoisted styles to `styles.js` (P5);
 >   keydown listener no longer re-subscribes per keystroke (P6); extracted
->   `api.js`, `socket.js`, `messages.js`, `styles.js`, `useAuth`, `useTopAnswers`
->   (part of R1). `App.jsx` 1057 → ~770 lines.
-> - **Deferred:** splitting the six page views into separate component files
->   (the rest of R1). Judgment call — the *logic* is now extracted to
->   hooks/modules, but moving the page JSX into files with prop-threading is
->   organisational and carries regression risk best paired with colocating
->   `text` state into a `GamePage` (which would also cut the per-keystroke
->   whole-tree re-render). Left as a focused follow-up. S7 (every answer public)
->   and S8/S9 left as noted — product decisions, not bugs.
+>   `api.js`, `socket.js`, `messages.js`, `styles.js`, `useAuth`, `useTopAnswers`.
+> - **R1 fully done:** the six page views are now separate components
+>   (`Menu.jsx` + `pages/GamePage`, `ResultsPage`, `IntroPage`, `AboutPage`,
+>   `AccountPage`, `SettingsPage`). `App.jsx` 1057 → ~340 lines (state + effects
+>   + routing). Account/Settings own their own form state; game `text`/reveal
+>   stay in App so progress survives a detour to settings (verified). Note:
+>   `text` was intentionally **not** colocated into `GamePage` — that would
+>   require unmounting it on navigation and lose in-progress typing; keeping it
+>   in App preserves that behaviour, and the per-keystroke re-render is cheap now
+>   that styles are hoisted.
+> - **Left as noted (product decisions, not bugs):** S7 (every answer public),
+>   S8 (auth response shape), S9 (message-rotation race).
 
 
 **Scope:** `backend/` (Fastify + Postgres/Neon + Socket.IO) and `frontend/proj/app/`
