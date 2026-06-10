@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import SiteFooter from "../SiteFooter.jsx";
+import LogoMark from "../LogoMark.jsx";
 
 const SITE_URL = "https://dotcomma.com.au";
 const TITLE = "How to play DotComma — the constrained-language word game";
@@ -37,11 +38,12 @@ export function meta() {
 }
 
 export default function HowToPlay() {
-  const h2 = { fontSize: 26, marginTop: 36 };
+  const h2 = { fontSize: 26, marginTop: 36, textAlign: "left" };
   const p = { fontSize: 16, lineHeight: 1.6 };
   return (
-    <main style={{ maxWidth: 680, margin: "0 auto", padding: "48px 24px" }}>
-      <h1 style={{ fontSize: 38, marginBottom: 8 }}>
+    <main style={{ maxWidth: 680, margin: "0 auto", padding: "48px 24px", textAlign: "justify" }}>
+      <h1 style={{ fontSize: 38, marginBottom: 8, textAlign: "left" }}>
+        <LogoMark size={42} />
         <span className="dc-title">How to play DotComma</span>
       </h1>
       <p style={{ fontSize: 20, opacity: 0.85, marginTop: 0 }}>

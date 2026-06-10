@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { aboutDotComma } from "../about.jsx";
 import SiteFooter from "../SiteFooter.jsx";
+import LogoMark from "../LogoMark.jsx";
 
 const SITE_URL = "https://dotcomma.com.au";
 const TITLE = "About DotComma — building a shared bridge language";
@@ -30,8 +31,9 @@ export default function About() {
     .filter(Boolean);
 
   return (
-    <main style={{ maxWidth: 680, margin: "0 auto", padding: "48px 24px" }}>
-      <h1 style={{ fontSize: 38, marginBottom: 8 }}>
+    <main style={{ maxWidth: 680, margin: "0 auto", padding: "48px 24px", textAlign: "justify" }}>
+      <h1 style={{ fontSize: 38, marginBottom: 8, textAlign: "left" }}>
+        <LogoMark size={42} />
         <span className="dc-title">About DotComma</span>
       </h1>
       <p style={{ fontSize: 20, opacity: 0.85, marginTop: 0 }}>
@@ -47,8 +49,8 @@ export default function About() {
         other language communities.
       </p>
 
-      <h2 style={{ fontSize: 26, marginTop: 36 }}>The bigger idea</h2>
-      <div style={{ textAlign: "left" }}>
+      <h2 style={{ fontSize: 26, marginTop: 36, textAlign: "left" }}>The bigger idea</h2>
+      <div style={{ textAlign: "justify" }}>
         {paragraphs.map((p, i) => (
           <p key={i} style={{ fontSize: 16, lineHeight: 1.6, marginBottom: 16 }}>
             {p}
