@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_URL, authHeaders, getToken } from "./api.js";
+import { API_URL, authHeaders, hasSession } from "./api.js";
 
 // Loads the public top answers for the current prompt while on the results
 // page, re-fetching when the prompt, sort, or answersVersion changes. Aborts
@@ -25,7 +25,7 @@ export function useTopAnswers(page, promptKey, sortBy, answersVersion) {
 
   // Toggle a like; returns a note string for the UI (empty on success).
   const likeAnswer = (answerId) => {
-    if (!getToken()) return "Sign in to like answers.";
+    if (!hasSession()) return "Sign in to like answers.";
     fetch(`${API_URL}/api/answers/${answerId}/like`, {
       method: "POST",
       headers: authHeaders()

@@ -12,7 +12,6 @@ export default function Menu({
   menuRef,
   onSignIn,
   onSettings,
-  onAbout,
   onMyAnswers,
   onResetProgress,
   onSignOut
@@ -46,9 +45,6 @@ export default function Menu({
           )}
           <div className="dc-menu-item" style={menuItemStyle} onClick={onSettings}>
             Settings
-          </div>
-          <div className="dc-menu-item" style={menuItemStyle} onClick={onAbout}>
-            About DotComma
           </div>
           <div className="dc-menu-item" style={menuItemStyle} onClick={onMyAnswers}>
             My answers

@@ -61,94 +61,17 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000).unref();
 
-// Guard an auth route: caps attempts per IP (and optionally per email) over a
-// window. Replies 429 and returns false when over the limit.
-function authRateLimit(request, reply, email) {
-  const route = request.routeOptions?.url || request.url;
-  const ipOk = rateLimit(`ip:${request.ip}:${route}`, 20, 10 * 60 * 1000);
-  const emailOk = email
-    ? rateLimit(`email:${email}:${route}`, 5, 10 * 60 * 1000)
-    : true;
-  if (!ipOk || !emailOk) {
-    reply.code(429).send({ error: "Too many attempts. Try again later." });
-    return false;
-  }
-  return true;
-}
-
 app.get("/", async () => ({ ok: true }));
 
-// --- Auth (spec Phase 2): email-code sign-in ---
-
-app.post("/api/auth/start", async (request, reply) => {
-  const email = auth.normalizeEmail(request.body?.email || "");
-  if (!auth.isValidEmail(email)) {
-    return reply.code(400).send({ error: "Enter a valid email address." });
-  }
-  if (!authRateLimit(request, reply, email)) return;
-  await auth.startSignIn(email);
-  return { ok: true };
-});
-
-app.post("/api/auth/verify", async (request, reply) => {
-  const email = auth.normalizeEmail(request.body?.email || "");
-  const code = request.body?.code;
-  if (!auth.isValidEmail(email) || !code) {
-    return reply.code(400).send({ error: "Email and code are required." });
-  }
-  if (!authRateLimit(request, reply, email)) return;
-  const result = await auth.verifySignIn(email, code);
-  if (result.error) return reply.code(401).send({ error: result.error });
-  return result;
-});
-
-// Email + password: signs up, logs in, or sets a password on a
-// legacy code-only account.
-app.post("/api/auth/password", async (request, reply) => {
-  const email = auth.normalizeEmail(request.body?.email || "");
-  const password = request.body?.password;
-  if (!auth.isValidEmail(email)) {
-    return reply.code(400).send({ error: "Enter a valid email address." });
-  }
-  if (!authRateLimit(request, reply, email)) return;
-  const result = await auth.passwordSignIn(email, password);
-  if (result.error) return reply.code(401).send({ error: result.error });
-  return result;
-});
-
-// Forgot password: email a reset code, then set a new password with it.
-// /start always returns ok (never reveals whether the email has an account).
-app.post("/api/auth/forgot/start", async (request, reply) => {
-  const email = auth.normalizeEmail(request.body?.email || "");
-  if (!auth.isValidEmail(email)) {
-    return reply.code(400).send({ error: "Enter a valid email address." });
-  }
-  if (!authRateLimit(request, reply, email)) return;
-  await auth.requestPasswordReset(email);
-  return { ok: true };
-});
-
-app.post("/api/auth/forgot/reset", async (request, reply) => {
-  const email = auth.normalizeEmail(request.body?.email || "");
-  const { code, password } = request.body || {};
-  if (!auth.isValidEmail(email) || !code) {
-    return reply.code(400).send({ error: "Email and code are required." });
-  }
-  if (!authRateLimit(request, reply, email)) return;
-  const result = await auth.resetPassword(email, code, password);
-  if (result.error) return reply.code(401).send({ error: result.error });
-  return result;
-});
+// Auth is handled by Supabase Auth on the client (sign-in / sign-up / password
+// reset all happen there). The backend just verifies the Supabase access token
+// (auth.getUserForRequest) and maps it to a profile row. There are no auth
+// endpoints here any more.
 
 app.get("/api/me", async (request, reply) => {
   const user = await auth.getUserForRequest(request);
   if (!user) return reply.code(401).send({ error: "Not signed in." });
   return { user: auth.publicUser(user) };
-});
-
-app.post("/api/auth/signout", async (request) => {
-  await auth.signOut(request);
-  return { ok: true };
 });
 
 // Change the signed-in user's display name (Settings).
@@ -190,6 +113,11 @@ async function nextMessageIndex(outcome, poolSize) {
 
 // Submit an answer: validate server-side (authoritative), store, return both.
 app.post("/api/answers", async (request, reply) => {
+  // Light anti-spam: cap submissions per IP.
+  if (!rateLimit(`answers:${request.ip}`, 30, 60 * 1000)) {
+    return reply.code(429).send({ error: "Slow down a moment and try again." });
+  }
+
   const { promptKey, answerText, visibility, anonymousName } = request.body || {};
 
   if (!promptKey || typeof promptKey !== "string") {

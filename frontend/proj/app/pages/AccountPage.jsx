@@ -1,66 +1,70 @@
 import { useState } from "react";
-import { apiFetch, setToken } from "../api.js";
+import { getSupabase } from "../supabaseClient.js";
 import { containerStyle, buttonStyle, authInputStyle } from "../styles.js";
 
-// Sign in / sign up (email + password) with a forgot-password flow. Owns its
-// own form state — it's reached fresh each time, so nothing needs to persist
-// in App. `menu` is the shared <Menu> element; setUser/onDone come from App.
-export default function AccountPage({ menu, setUser, onDone }) {
-  const [mode, setMode] = useState("password"); // password | forgot | reset
+// Sign in / sign up + "forgot password", all via Supabase Auth. The session
+// (and the `user` shown in the menu) is picked up by useAuth's auth listener,
+// so on success we just navigate back with onDone().
+export default function AccountPage({ menu, onDone }) {
+  const [mode, setMode] = useState("password"); // password | forgot
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  // Email + password: signs up, logs in, or sets a password on a legacy account.
+  const supabase = getSupabase();
+
+  // Sign in; if the account doesn't exist yet, create it (Supabase obscures
+  // whether an email is registered, so a wrong password on an existing account
+  // shows the "confirm your email" note too — the forgot-password link covers
+  // that case).
   const submitPassword = async (e) => {
     e.preventDefault();
     setError("");
-    try {
-      const data = await apiFetch("/api/auth/password", {
-        method: "POST",
-        body: { email, password }
-      });
-      setToken(data.token);
-      setUser(data.user);
-      onDone();
-    } catch (err) {
-      setError(err.message || "Could not reach the server.");
+    setNote("");
+    if (!supabase) return setError("Sign-in isn't configured yet.");
+    setBusy(true);
+
+    const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (!signInErr && data.session) {
+      setBusy(false);
+      return onDone();
     }
+    if (signInErr && /invalid login credentials/i.test(signInErr.message)) {
+      const { data: signUp, error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password
+      });
+      setBusy(false);
+      if (signUpErr) return setError(signUpErr.message);
+      if (signUp.session) return onDone(); // email confirmation disabled
+      return setNote(
+        "Almost there — check your email to confirm your account. " +
+          "Already have one? Use “Forgot your password?”"
+      );
+    }
+    setBusy(false);
+    setError(signInErr ? signInErr.message : "Could not sign in.");
   };
 
-  // Forgot password: request a reset code by email.
-  const submitForgotStart = async (e) => {
+  // Email a password-reset link that lands on /reset-password.
+  const submitForgot = async (e) => {
     e.preventDefault();
     setError("");
     setNote("");
-    try {
-      await apiFetch("/api/auth/forgot/start", { method: "POST", body: { email } });
-      setCode("");
-      setPassword("");
-      setMode("reset");
-      setNote("If that email has an account, a reset code is on its way.");
-    } catch (err) {
-      setError(err.message || "Could not reach the server.");
-    }
-  };
-
-  // Forgot password: set a new password using the emailed code.
-  const submitForgotReset = async (e) => {
-    e.preventDefault();
-    setError("");
-    try {
-      const data = await apiFetch("/api/auth/forgot/reset", {
-        method: "POST",
-        body: { email, code, password }
-      });
-      setToken(data.token);
-      setUser(data.user);
-      onDone();
-    } catch (err) {
-      setError(err.message || "Could not reach the server.");
-    }
+    if (!supabase) return setError("Sign-in isn't configured yet.");
+    setBusy(true);
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo
+    });
+    setBusy(false);
+    if (resetErr) return setError(resetErr.message);
+    setNote("If that email has an account, a reset link is on its way.");
   };
 
   return (
@@ -94,8 +98,8 @@ export default function AccountPage({ menu, setUser, onDone }) {
               style={authInputStyle}
             />
             <br />
-            <button type="submit" className="dc-button" style={buttonStyle}>
-              Sign in
+            <button type="submit" className="dc-button" style={buttonStyle} disabled={busy}>
+              {busy ? "…" : "Sign in"}
             </button>
             <p style={{ fontSize: 14, marginTop: 14 }}>
               <span
@@ -113,9 +117,9 @@ export default function AccountPage({ menu, setUser, onDone }) {
         )}
 
         {mode === "forgot" && (
-          <form onSubmit={submitForgotStart}>
+          <form onSubmit={submitForgot}>
             <p style={{ fontSize: 16 }}>
-              Enter your email and we'll send you a reset code.
+              Enter your email and we'll send you a reset link.
             </p>
             <input
               type="email"
@@ -127,48 +131,12 @@ export default function AccountPage({ menu, setUser, onDone }) {
               style={authInputStyle}
             />
             <br />
-            <button type="submit" className="dc-button" style={buttonStyle}>
-              Send code
+            <button type="submit" className="dc-button" style={buttonStyle} disabled={busy}>
+              {busy ? "…" : "Send reset link"}
             </button>
             <p style={{ fontSize: 14, marginTop: 14 }}>
               <span className="dc-about-link" onClick={() => setMode("password")}>
                 Back to sign in
-              </span>
-            </p>
-          </form>
-        )}
-
-        {mode === "reset" && (
-          <form onSubmit={submitForgotReset}>
-            <p style={{ fontSize: 16 }}>
-              Enter the code from your email and a new password.
-            </p>
-            <input
-              type="text"
-              autoFocus
-              inputMode="numeric"
-              className="dc-input"
-              placeholder="6-digit code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              style={authInputStyle}
-            />
-            <br />
-            <input
-              type="password"
-              className="dc-input"
-              placeholder="new password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={authInputStyle}
-            />
-            <br />
-            <button type="submit" className="dc-button" style={buttonStyle}>
-              Set new password
-            </button>
-            <p style={{ fontSize: 14, marginTop: 14 }}>
-              <span className="dc-about-link" onClick={() => setMode("forgot")}>
-                Resend code
               </span>
             </p>
           </form>

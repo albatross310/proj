@@ -244,10 +244,6 @@ function App() {
       menuRef={menuRef}
       onSignIn={() => goToPage("account")}
       onSettings={() => goToPage("settings")}
-      onAbout={() => {
-        setMenuOpen(false);
-        setPage("about");
-      }}
       onMyAnswers={() => setMenuNote("My answers is coming soon.")}
       onResetProgress={() => {
         setResults([]);
@@ -280,7 +276,7 @@ function App() {
   }
 
   if (page === "account") {
-    return <AccountPage menu={menu} setUser={setUser} onDone={backToReturn} />;
+    return <AccountPage menu={menu} onDone={backToReturn} />;
   }
 
   if (page === "about") {
