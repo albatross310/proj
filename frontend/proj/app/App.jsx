@@ -14,6 +14,7 @@ import IntroPage from "./pages/IntroPage.jsx";
 import AboutPage from "./pages/AboutPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
+import MyAnswersPage from "./pages/MyAnswersPage.jsx";
 
 const GREEN = "#15803d";
 const RED = "#e11d48";
@@ -22,7 +23,7 @@ function App() {
   // ── Core game + page state ──────────────────────────────────────────────
   const [text, setText] = useState("");
   const [validated, setValidated] = useState([]); // server-authoritative per-word validity
-  const [page, setPage] = useState("game"); // game | intro | results | end | about | account | settings
+  const [page, setPage] = useState("game"); // game | intro | results | end | about | account | settings | myanswers
   const [resultMessage, setResultMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [results, setResults] = useState([]);
@@ -264,7 +265,11 @@ function App() {
     returnPageRef.current = page;
     setPage(target);
   };
-  const backToReturn = () => setPage(returnPageRef.current || "game");
+  const backToReturn = () => {
+    const target = returnPageRef.current || "game";
+    returnPageRef.current = "game"; // consume, so Back can't loop to itself
+    setPage(target);
+  };
 
   const menu = (
     <Menu
@@ -276,7 +281,7 @@ function App() {
       menuRef={menuRef}
       onSignIn={() => goToPage("account")}
       onSettings={() => goToPage("settings")}
-      onMyAnswers={() => setMenuNote("My answers is coming soon.")}
+      onMyAnswers={() => goToPage("myanswers")}
       onResetProgress={() => {
         try {
           localStorage.removeItem("dotcomma_progress");
@@ -314,6 +319,17 @@ function App() {
 
   if (page === "account") {
     return <AccountPage menu={menu} onDone={backToReturn} />;
+  }
+
+  if (page === "myanswers") {
+    return (
+      <MyAnswersPage
+        menu={menu}
+        user={user}
+        onBack={backToReturn}
+        onSignIn={() => goToPage("account")}
+      />
+    );
   }
 
   if (page === "about") {

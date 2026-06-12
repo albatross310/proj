@@ -88,6 +88,23 @@ app.post("/api/me/display-name", async (request, reply) => {
   return result;
 });
 
+// The signed-in user's own answers, newest first (My Answers page).
+// Only their rows, only display-safe fields.
+app.get("/api/me/answers", async (request, reply) => {
+  const user = await auth.getUserForRequest(request);
+  if (!user) return reply.code(401).send({ error: "Not signed in." });
+
+  const { rows } = await db.query(`
+    SELECT id, prompt_key, answer_text, all_words_valid, score, visibility, created_at
+    FROM answers
+    WHERE user_id = $1
+    ORDER BY created_at DESC, id DESC
+    LIMIT 200
+  `, [user.id]);
+
+  return { answers: rows };
+});
+
 // Pick the next playful-message index for an outcome: random, but never
 // the same as the last one shown, and the position persists in the DB so
 // the rotation continues across reloads and players.
