@@ -1,0 +1,16 @@
+[
+  {
+    "key": "rule-1-be-simple",
+    "heading": "Rule 1: Be simple!",
+    "intro": [
+      "Rewrite the following line in **short**, plain words."
+    ],
+    "prompt": "\"I try write this line with not-long words.\"",
+    "clue": "Clue:  I t__ __ ___t_ ___ l___ _n ___r_ ___d_.",
+    "correct": "I try write to write the line in short words",
+    "answers": [
+      "I try write to write the line in short words"
+    ],
+    "hint": null
+  }
+]

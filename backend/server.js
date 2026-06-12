@@ -5,6 +5,10 @@ const db = require("./db.js");
 const { validateText } = require("./words.js");
 const auth = require("./auth.js");
 
+// Prompt deck, generated from content/prompts.txt (see scripts/build-content.mjs).
+const prompts = require("./shared/prompts.json");
+const promptsByKey = new Map(prompts.map((p) => [p.key, p]));
+
 const app = Fastify();
 
 // CORS allowlist. Defaults to the known DotComma origins (+ any *.vercel.app
@@ -127,12 +131,24 @@ app.post("/api/answers", async (request, reply) => {
     return reply.code(400).send({ error: "answerText is required" });
   }
 
+  // Only accept answers for prompts that exist in the deck, so a stale
+  // client can't write rows under a key no prompt will ever show again.
+  const prompt = promptsByKey.get(promptKey);
+  if (!prompt) {
+    return reply.code(400).send({ error: "Unknown promptKey." });
+  }
+
   const validation = validateText(answerText);
 
-  // Simple MVP score per spec: all words valid = +10, small bonus for brevity.
-  const score = validation.allValid
-    ? 10 + Math.max(0, 10 - validation.validCount)
-    : 0;
+  // Score per spec: all words valid = +10, small bonus for brevity,
+  // and +5 when the answer matches the prompt's correct/accepted answers.
+  const norm = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const exact = [prompt.correct, ...prompt.answers]
+    .filter(Boolean)
+    .some((a) => norm(a) === norm(answerText));
+  const score =
+    (validation.allValid ? 10 + Math.max(0, 10 - validation.validCount) : 0) +
+    (exact ? 5 : 0);
 
   // Private unless the client explicitly opts in (spec: privacy-safe default).
   const vis = visibility === "public" ? "public" : "private";

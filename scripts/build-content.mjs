@@ -5,8 +5,10 @@
 //   node scripts/build-content.mjs --strict   treat vocabulary warnings as errors
 //
 // Reads  content/words.txt, content/prompts.txt
-// Writes shared/words.json, shared/prompts.json (committed to the repo —
-// the app consumes the JSON, never the .txt files directly).
+// Writes words.json + prompts.json into each consumer (backend/shared/,
+// frontend/proj/app/shared/) so neither deploy needs to reach outside its
+// own root directory. The copies are committed; the .txt files are the
+// only thing you edit.
 //
 // Errors (exit 1, nothing written): missing required prompt fields,
 // duplicate keys, unknown field names, malformed merge lines.
@@ -19,7 +21,10 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const contentDir = join(root, "content");
-const sharedDir = join(root, "shared");
+const targetDirs = [
+  join(root, "backend", "shared"),
+  join(root, "frontend", "proj", "app", "shared"),
+];
 
 const CHECK = process.argv.includes("--check");
 const STRICT = process.argv.includes("--strict");
@@ -211,21 +216,29 @@ const out = {
 };
 
 if (CHECK) {
-  const stale = Object.keys(out).filter(
-    (f) => !existsSync(join(sharedDir, f)) || readFileSync(join(sharedDir, f), "utf8") !== out[f]
-  );
+  const stale = [];
+  for (const dir of targetDirs) {
+    for (const f of Object.keys(out)) {
+      const path = join(dir, f);
+      if (!existsSync(path) || readFileSync(path, "utf8") !== out[f]) stale.push(path);
+    }
+  }
   if (stale.length) {
     console.error(
-      `Content check FAILED: ${stale.join(", ")} out of date — run \`node scripts/build-content.mjs\` and commit.`
+      `Content check FAILED, out of date:\n${stale.map((p) => "  " + p).join("\n")}\n` +
+        "Run `node scripts/build-content.mjs` and commit."
     );
     process.exit(1);
   }
-  console.log("Content check OK: shared JSON matches content/.");
+  console.log("Content check OK: generated JSON matches content/.");
 } else {
-  mkdirSync(sharedDir, { recursive: true });
-  for (const [f, body] of Object.entries(out)) writeFileSync(join(sharedDir, f), body);
+  for (const dir of targetDirs) {
+    mkdirSync(dir, { recursive: true });
+    for (const [f, body] of Object.entries(out)) writeFileSync(join(dir, f), body);
+  }
   console.log(
-    `Built shared/words.json (${wordData.baseWords.length} words, ${wordData.merges.length} merges) ` +
-      `and shared/prompts.json (${prompts.length} prompt${prompts.length === 1 ? "" : "s"}).`
+    `Built words.json (${wordData.baseWords.length} words, ${wordData.merges.length} merges) ` +
+      `and prompts.json (${prompts.length} prompt${prompts.length === 1 ? "" : "s"}) ` +
+      `into: ${targetDirs.map((d) => d.slice(root.length + 1)).join(", ")}`
   );
 }
