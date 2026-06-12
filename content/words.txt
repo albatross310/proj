@@ -28,10 +28,13 @@ smash spin split spot spray stack step stir stretch
 strike sweep switch tend test track trade trust twist
 
 # prepositions
-in on with at
+in on with at to
+
+# articles + everyday function words
+the
 
 # language-related nouns
-word text line name term sign sound tone mark form
+word words text line name term sign sound tone mark form
 type code rule set list note voice speech talk chat
 box purple
 
