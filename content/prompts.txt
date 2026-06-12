@@ -1,0 +1,29 @@
+# DotComma prompts — single source of truth.
+#
+# One block per prompt, blocks separated by a line containing only ---
+# Deck order = file order.
+#
+# Fields:
+#   KEY:      stable prompt key. Never change it after launch — saved
+#             answers in the database attach to this key.
+#   HEADING:  shown as the page title.
+#   INTRO:    repeat the INTRO line for multi-line intros; each line is
+#             one click-to-reveal stage. **bold** works here.
+#   PROMPT:   the line the player responds to. **bold** works here.
+#   CLUE:     optional clue line. Use NA when there isn't one.
+#   CORRECT:  the canonical correct answer.
+#   ANSWERS:  accepted answers, separated by " | ". Usually includes CORRECT.
+#   HINT:     optional hint. Use NA when there isn't one.
+#
+# Lines starting with # are comments. Run `node scripts/build-content.mjs`
+# from the repo root after editing — it checks every CORRECT/ANSWERS line
+# against the vocabulary and tells you about words that won't validate.
+
+KEY: rule-1-be-simple
+HEADING: Rule 1: Be simple!
+INTRO: Rewrite the following line in **short**, plain words.
+PROMPT: "I try write this line with not-long words."
+CLUE: Clue:  I t__ __ ___t_ ___ l___ _n ___r_ ___d_.
+CORRECT: I try write to write the line in short words
+ANSWERS: I try write to write the line in short words
+HINT: NA
