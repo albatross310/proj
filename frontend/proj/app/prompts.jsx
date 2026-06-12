@@ -1,50 +1,7 @@
-// DotComma prompts. Add new prompts by appending blocks to the script
-// below — columns are | separated, blocks are --- separated:
-//
-//   HEADING | INTRO | PROMPT | CLUE | CORRECT | ANSWERS | HINT
-//
-// - INTRO can hold several lines (each revealed by a click)
-// - ANSWERS can hold several accepted answers separated by ;
-// - Use NA for CLUE/HINT when a prompt doesn't have one
-// - **bold** works inside INTRO/PROMPT text
-const script = `
-HEADING | INTRO | PROMPT | CLUE | CORRECT | ANSWERS | HINT
----
-Rule 1: Be simple! |
-Rewrite the following line in **short**, plain words.|
-"I try write this line with not-long words." |
-Clue:  I t__ __ ___t_ ___ l___ _n ___r_ ___d_. |
-I try write to write the line in short words |
-I try write to write the line in short words |
-NA
----
-`;
-
-export function parseScript(script) {
-  return script
-    .split("---")
-    .map(row => row.trim())
-    .filter(row => row && !row.startsWith("HEADING"))
-    .map(row => {
-    const [heading, intro, prompt, clue, correct, answers, hint] = row
-      .split("|")
-      .map(cell => cell.trim());
-
-    return {
-      heading: heading + "\n",
-      intro: intro
-        .split("\n")
-        .map(x => x.trim())
-        .filter(Boolean),
-      prompt,
-      clue,
-      correct,
-      answers: answers ? answers.split(";").map(a =>
-        a.trim()).filter(Boolean) : [],
-      hint
-    };
-  });
-}
+// DotComma prompts. The deck lives in content/prompts.txt — edit that file
+// and run `node scripts/build-content.mjs`; never edit the generated JSON.
+// Deck order = file order.
+import promptData from "./shared/prompts.json";
 
 export function renderFormatted(script) {
   return script.split("\n").map((line, i) => (
@@ -59,17 +16,22 @@ export function renderFormatted(script) {
   ));
 }
 
-export const gamePages = parseScript(script);
+// Same shape the old script parser produced. clue/hint keep the "NA"
+// sentinel (the JSON uses null) because the pages check for it; the
+// trailing \n on heading renders as the <br> after the title.
+export const gamePages = promptData.map((p) => ({
+  heading: p.heading + "\n",
+  intro: p.intro,
+  prompt: p.prompt,
+  clue: p.clue ?? "NA",
+  correct: p.correct,
+  answers: p.answers,
+  hint: p.hint ?? "NA",
+}));
 
-// Stable key per prompt, e.g. "Rule 1: Be simple!" -> "rule-1-be-simple".
-// NOTE: keys derive from headings — rewording a heading orphans that
-// prompt's saved answers.
-export const promptKeys = gamePages.map(p =>
-  p.heading
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-);
+// Stable keys come straight from the content file's KEY field, so rewording
+// a heading no longer orphans that prompt's saved answers.
+export const promptKeys = promptData.map((p) => p.key);
 
 export const headings = gamePages.map(p => renderFormatted(p.heading));
 export const prompts = gamePages.map(p => renderFormatted(p.prompt));

@@ -4,7 +4,7 @@ import { gamePages, promptKeys, clue } from "./prompts.jsx";
 import { apiFetch } from "./api.js";
 import { getSocket } from "./socket.js";
 import { WIN_MESSAGES, LOSE_MESSAGES } from "./messages.js";
-import { colorFor } from "./styles.js";
+import { colorFor, containerStyle, buttonRowStyle, buttonStyle } from "./styles.js";
 import { useAuth } from "./useAuth.js";
 import { useTopAnswers } from "./useTopAnswers.js";
 import Menu from "./Menu.jsx";
@@ -22,7 +22,7 @@ function App() {
   // ── Core game + page state ──────────────────────────────────────────────
   const [text, setText] = useState("");
   const [validated, setValidated] = useState([]); // server-authoritative per-word validity
-  const [page, setPage] = useState("game"); // game | intro | results | about | account | settings
+  const [page, setPage] = useState("game"); // game | intro | results | end | about | account | settings
   const [resultMessage, setResultMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [results, setResults] = useState([]);
@@ -120,6 +120,37 @@ function App() {
     if (storedSort) setSortBy(storedSort);
   }, []);
 
+  // ── Deck progress: a list of completed prompt keys in localStorage. ─────
+  const completedKeys = () => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("dotcomma_progress") || "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return []; // corrupted / unavailable storage — start fresh
+    }
+  };
+
+  const markCompleted = (key) => {
+    try {
+      const completed = completedKeys();
+      if (!completed.includes(key)) {
+        completed.push(key);
+        localStorage.setItem("dotcomma_progress", JSON.stringify(completed));
+      }
+    } catch {
+      /* storage unavailable — progress just won't persist */
+    }
+  };
+
+  // Resume at the first prompt not yet submitted. Runs after mount (like the
+  // prefs above) to avoid a hydration mismatch. Keys no longer in the deck
+  // are ignored, so removing a prompt can't strand anyone.
+  useEffect(() => {
+    const next = promptKeys.findIndex((k) => !completedKeys().includes(k));
+    if (next === -1) setPage("end");
+    else if (next > 0) setPromptIndex(next);
+  }, []);
+
   // ── Close the menu on click away (capture phase, so the click doesn't also
   // advance the game). Clicks inside the menu pass through to its items. ───
   useEffect(() => {
@@ -171,6 +202,7 @@ function App() {
       .then(() => setAnswersVersion((v) => v + 1))
       .catch((err) => console.error("Could not save answer:", err));
 
+    markCompleted(promptKeys[promptIndex]);
     setText("");
     setPage("results");
   };
@@ -246,6 +278,11 @@ function App() {
       onSettings={() => goToPage("settings")}
       onMyAnswers={() => setMenuNote("My answers is coming soon.")}
       onResetProgress={() => {
+        try {
+          localStorage.removeItem("dotcomma_progress");
+        } catch {
+          /* storage unavailable */
+        }
         setResults([]);
         setPromptIndex(0);
         setText("");
@@ -295,6 +332,40 @@ function App() {
     );
   }
 
+  if (page === "end") {
+    return (
+      <div style={{ textAlign: "center", marginTop: 100, fontSize: 24 }}>
+        <div className="dc-card-page" style={containerStyle}>
+          {menu}
+          <h2>
+            <br /><br />That&apos;s the whole deck — for now.
+          </h2>
+          <p style={{ fontSize: 20 }}>New prompts are on the way.</p>
+          <div style={buttonRowStyle}>
+            <button
+              className="dc-button"
+              style={buttonStyle}
+              onClick={() => {
+                try {
+                  localStorage.removeItem("dotcomma_progress");
+                } catch {
+                  /* storage unavailable */
+                }
+                setResults([]);
+                setPromptIndex(0);
+                setText("");
+                setRevealIndex(0);
+                setPage("game");
+              }}
+            >
+              Play again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (page === "results") {
     return (
       <ResultsPage
@@ -303,7 +374,7 @@ function App() {
         resultText={results[promptIndex] || ""}
         onContinue={() => {
           if (promptIndex >= gamePages.length - 1) {
-            setPage("intro");
+            setPage("end");
           } else {
             setPromptIndex((i) => i + 1);
             setRevealIndex(0);
