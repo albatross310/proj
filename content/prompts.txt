@@ -27,3 +27,90 @@ CLUE: Clue:  I t__ __ ___t_ ___ l___ _n ___r_ ___d_.
 CORRECT: I try write to write the line in short words
 ANSWERS: I try write to write the line in short words
 HINT: NA
+---
+KEY: rule-2-short-words
+HEADING: Rule 2: Short words!
+INTRO: Rewrite the following line in **short**, plain words.
+PROMPT: "I utilize sophisticated vocabulary to communicate my thinking."
+CLUE: Clue:  I u__ ___rt ___ds __ ___k.
+CORRECT: I use short words to talk
+ANSWERS: I use short words to talk | I use small words to talk
+HINT: NA
+---
+KEY: rule-3-cut-it-down
+HEADING: Rule 3: Cut it down!
+INTRO: Say the same thing in as **few** words as you can.
+PROMPT: "At this point in time, we are in the process of making a start."
+CLUE: NA
+CORRECT: We start
+ANSWERS: We start | I start
+HINT: NA
+---
+KEY: rule-4-one-good-line
+HEADING: Rule 4: One good line!
+INTRO: Heavy text wants to be **one good line**.
+PROMPT: "Each morning, the illumination of our celestial neighbour obliges us to leave our beds."
+CLUE: NA
+CORRECT: We wake with the sun
+ANSWERS: We wake with the sun | I wake with the sun | We rise with the sun
+HINT: NA
+---
+KEY: babel-one-speech
+HEADING: Babel: One speech
+INTRO: From an old story (Genesis 11).
+INTRO: Rewrite it in plain words.
+PROMPT: "And the whole earth was of one language, and of one speech."
+CLUE: NA
+CORRECT: One world, one speech
+ANSWERS: One world, one speech | One land with one speech
+HINT: NA
+---
+KEY: babel-the-tower
+HEADING: Babel: The tower
+INTRO: The people make a plan (Genesis 11).
+INTRO: Say it plain.
+PROMPT: "Go to, let us build us a city and a tower, whose top may reach unto heaven."
+CLUE: NA
+CORRECT: We build the city to the sky
+ANSWERS: We build the city to the sky | We build to the sky
+HINT: NA
+---
+KEY: odyssey-the-man
+HEADING: The Odyssey: The man
+INTRO: Homer opens with one big call (Book I).
+INTRO: Make it small.
+PROMPT: "Tell me, O Muse, of that ingenious hero who travelled far and wide."
+CLUE: NA
+CORRECT: Speak to me: the man, the sea, the way home
+ANSWERS: Speak to me: the man, the sea, the way home | Talk to me: the man, the sea, the way home
+HINT: NA
+---
+KEY: tao-one-step
+HEADING: Tao: One step
+INTRO: From the Tao Te Ching.
+INTRO: Keep it plain and true.
+PROMPT: "A journey of a thousand miles begins beneath one's feet."
+CLUE: NA
+CORRECT: We start the long road with one step
+ANSWERS: We start the long road with one step | The long road: one step
+HINT: NA
+---
+KEY: nights-one-man
+HEADING: Arabian Nights: The merchant
+INTRO: A tale begins (the Thousand and One Nights).
+INTRO: Make it plain.
+PROMPT: "There was once a merchant who possessed great wealth, and traded in many lands."
+CLUE: NA
+CORRECT: One rich man, one trade
+ANSWERS: One rich man, one trade | One rich man with one trade
+HINT: NA
+---
+KEY: river-of-words
+HEADING: The river of words
+INTRO: DotComma lives in Brisbane, the river city.
+INTRO: Put this in short words.
+PROMPT: "Language flows through the city like a river, carrying messages between its people."
+CLUE: NA
+CORRECT: Words run in the city
+ANSWERS: Words run in the city | The words run to the sea
+HINT: NA

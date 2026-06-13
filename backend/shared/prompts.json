@@ -12,5 +12,147 @@
       "I try write to write the line in short words"
     ],
     "hint": null
+  },
+  {
+    "key": "rule-2-short-words",
+    "heading": "Rule 2: Short words!",
+    "intro": [
+      "Rewrite the following line in **short**, plain words."
+    ],
+    "prompt": "\"I utilize sophisticated vocabulary to communicate my thinking.\"",
+    "clue": "Clue:  I u__ ___rt ___ds __ ___k.",
+    "correct": "I use short words to talk",
+    "answers": [
+      "I use short words to talk",
+      "I use small words to talk"
+    ],
+    "hint": null
+  },
+  {
+    "key": "rule-3-cut-it-down",
+    "heading": "Rule 3: Cut it down!",
+    "intro": [
+      "Say the same thing in as **few** words as you can."
+    ],
+    "prompt": "\"At this point in time, we are in the process of making a start.\"",
+    "clue": null,
+    "correct": "We start",
+    "answers": [
+      "We start",
+      "I start"
+    ],
+    "hint": null
+  },
+  {
+    "key": "rule-4-one-good-line",
+    "heading": "Rule 4: One good line!",
+    "intro": [
+      "Heavy text wants to be **one good line**."
+    ],
+    "prompt": "\"Each morning, the illumination of our celestial neighbour obliges us to leave our beds.\"",
+    "clue": null,
+    "correct": "We wake with the sun",
+    "answers": [
+      "We wake with the sun",
+      "I wake with the sun",
+      "We rise with the sun"
+    ],
+    "hint": null
+  },
+  {
+    "key": "babel-one-speech",
+    "heading": "Babel: One speech",
+    "intro": [
+      "From an old story (Genesis 11).",
+      "Rewrite it in plain words."
+    ],
+    "prompt": "\"And the whole earth was of one language, and of one speech.\"",
+    "clue": null,
+    "correct": "One world, one speech",
+    "answers": [
+      "One world, one speech",
+      "One land with one speech"
+    ],
+    "hint": null
+  },
+  {
+    "key": "babel-the-tower",
+    "heading": "Babel: The tower",
+    "intro": [
+      "The people make a plan (Genesis 11).",
+      "Say it plain."
+    ],
+    "prompt": "\"Go to, let us build us a city and a tower, whose top may reach unto heaven.\"",
+    "clue": null,
+    "correct": "We build the city to the sky",
+    "answers": [
+      "We build the city to the sky",
+      "We build to the sky"
+    ],
+    "hint": null
+  },
+  {
+    "key": "odyssey-the-man",
+    "heading": "The Odyssey: The man",
+    "intro": [
+      "Homer opens with one big call (Book I).",
+      "Make it small."
+    ],
+    "prompt": "\"Tell me, O Muse, of that ingenious hero who travelled far and wide.\"",
+    "clue": null,
+    "correct": "Speak to me: the man, the sea, the way home",
+    "answers": [
+      "Speak to me: the man, the sea, the way home",
+      "Talk to me: the man, the sea, the way home"
+    ],
+    "hint": null
+  },
+  {
+    "key": "tao-one-step",
+    "heading": "Tao: One step",
+    "intro": [
+      "From the Tao Te Ching.",
+      "Keep it plain and true."
+    ],
+    "prompt": "\"A journey of a thousand miles begins beneath one's feet.\"",
+    "clue": null,
+    "correct": "We start the long road with one step",
+    "answers": [
+      "We start the long road with one step",
+      "The long road: one step"
+    ],
+    "hint": null
+  },
+  {
+    "key": "nights-one-man",
+    "heading": "Arabian Nights: The merchant",
+    "intro": [
+      "A tale begins (the Thousand and One Nights).",
+      "Make it plain."
+    ],
+    "prompt": "\"There was once a merchant who possessed great wealth, and traded in many lands.\"",
+    "clue": null,
+    "correct": "One rich man, one trade",
+    "answers": [
+      "One rich man, one trade",
+      "One rich man with one trade"
+    ],
+    "hint": null
+  },
+  {
+    "key": "river-of-words",
+    "heading": "The river of words",
+    "intro": [
+      "DotComma lives in Brisbane, the river city.",
+      "Put this in short words."
+    ],
+    "prompt": "\"Language flows through the city like a river, carrying messages between its people.\"",
+    "clue": null,
+    "correct": "Words run in the city",
+    "answers": [
+      "Words run in the city",
+      "The words run to the sea"
+    ],
+    "hint": null
   }
 ]
