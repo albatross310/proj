@@ -1,57 +1,66 @@
-# DotComma vocabulary — single source of truth.
+# DotComma vocabulary — Ogden's Basic English (850) + DotComma extras.
 #
-# One or more words per line, separated by spaces.
-# Lines starting with # are comments. Blank lines are ignored.
-# Duplicates are harmless (the build dedupes), but tidy is nicer.
+# The core is Charles Ogden's Basic English word list, grouped as he did:
+# 100 operations, 400 general "things", 200 picturable "things",
+# 100 general qualities, 50 opposites. The DotComma extras section keeps the
+# game-specific words (mostly verbs) that Basic English leaves out, so the
+# existing prompt deck still validates.
 #
-# Run `node scripts/build-content.mjs` from the repo root after editing.
+# One or more words per line. # starts a comment. Run
+# `node scripts/build-content.mjs` from the repo root after editing.
 
-# pronouns
-i you we they he she it me him her us them
+# operations (100)
+come get give go keep let make put seem take be do have say see send may will
+about across after against among at before between by down from in off on over through to under up with
+as for of till than a the all any every little much no other some such that this
+i he you who and because but or if though while how when where why again ever far forward here near now out still then there together well
+almost enough even not only quite so very tomorrow yesterday north south east west please yes
 
-# verbs (strict monosyllable base forms)
-be do have go see say make take get give find
-think know want try use work call ask need feel
-leave put keep let help talk turn start show hear
-play run move live hold bring write read sit stand
-lose pay meet set learn change lead watch stop add
-spend grow open walk win wait serve die send build
-stay fall cut reach rise drive break choose draw
-drink fight fly hide ride shake shoot sing sink
-sleep slide speak steal stick swim swing teach throw
-wake wear weigh wind wrap burn burst cast catch
-climb count creep deal dig dive feed fight fill
-fold grip hang hit hold hunt jump kick knit lift
-lock march mark mix pack plant press pull push
-ring roll rub rush score serve shut slam slide
-smash spin split spot spray stack step stir stretch
-strike sweep switch tend test track trade trust twist
+# things — general (400)
+account act addition adjustment advertisement agreement air amount amusement animal answer apparatus approval argument art attack attempt attention attraction authority
+back balance base behavior belief birth bit bite blood blow body brass bread breath brother building burn burst business butter
+canvas care cause chalk chance change cloth coal color comfort committee company comparison competition condition connection control cook copper copy cork cotton cough country cover crack credit crime crush cry current curve
+damage danger daughter day death debt decision degree design desire destruction detail development digestion direction discovery discussion disease disgust distance distribution division doubt drink driving dust
+earth edge education effect end error event example exchange existence expansion experience expert
+fact fall family father fear feeling fiction field fight fire flame flight flower fold food force form friend front fruit
+glass gold government grain grass grip group growth guide harbor harmony hate hearing heat help history hole hope hour humor
+ice idea impulse increase industry ink insect instrument insurance interest invention iron jelly join journey judge jump
+kick kiss knowledge land language laugh law lead learning leather letter level lift light limit linen liquid list look loss love
+machine man manager mark market mass meal measure meat meeting memory metal middle milk mind mine minute mist money month morning mother motion mountain move music
+name nation need news night noise note number observation offer oil operation opinion order organization ornament owner
+page pain paint paper part paste payment peace person place plant play pleasure point poison polish porter position powder power price print process produce profit property prose protest pull punishment purpose push
+quality question rain range rate ray reaction reading reason record regret relation religion representative request respect rest reward rhythm rice river road roll room rub rule run
+salt sand scale science sea seat secretary selection self sense servant sex shade shake shame shock side sign silk silver sister size sky sleep slip slope smash smell smile smoke sneeze snow soap society son song sort sound soup space stage start statement steam steel step stitch stone stop story stretch structure substance sugar suggestion summer support surprise swim system
+talk taste tax teaching tendency test theory thing thought thunder time tin top touch trade transport trick trouble turn twist unit use value verse vessel view voice
+walk war wash waste water wave wax way weather week weight wind wine winter woman wood wool word work wound writing year
 
-# prepositions
-in on with at to
+# things — picturable (200)
+angle ant apple arch arm army baby bag ball band basin basket bath bed bee bell berry bird blade board boat bone book boot bottle box boy brain brake branch brick bridge brush bucket bulb button
+cake camera card cart carriage cat chain cheese chest chin church circle clock cloud coat collar comb cord cow cup curtain cushion dog door drain drawer dress drop
+ear egg engine eye face farm feather finger fish flag floor fly foot fork fowl frame garden girl glove goat gun
+hair hammer hand hat head heart hook horn horse hospital house island jewel kettle key knee knife knot leaf leg library line lip lock
+map match monkey moon mouth muscle nail neck needle nerve net nose nut office orange oven parcel pen pencil picture pig pin pipe plane plate plough pocket pot potato prison pump
+rail rat receipt ring rod roof root sail school scissors screw seed sheep shelf ship shirt shoe skin skirt snake sock spade sponge spoon spring square stamp star station stem stick stocking stomach store street sun
+table tail thread throat thumb ticket toe tongue tooth town train tray tree trousers umbrella wall watch wheel whip whistle window wing wire worm
 
-# articles + everyday function words
-the
+# qualities — general (100)
+able acid angry automatic beautiful black boiling bright broken brown cheap chemical chief clean clear common complex conscious cut deep dependent early elastic electric equal fat fertile first fixed flat free frequent full general good great grey hanging happy hard healthy high hollow important kind like living long male married material medical military natural necessary new normal open parallel past physical political poor possible present private probable quick quiet ready red regular responsible right round same second separate serious sharp smooth sticky stiff straight strong sudden sweet tall thick tight tired true violent waiting warm wet wide wise yellow young
 
-# language-related nouns
-word words text line name term sign sound tone mark form
-type code rule set list note voice speech talk chat
-box purple
+# qualities — opposites (50)
+awake bad bent bitter blue certain cold complete cruel dark dead dear delicate different dirty dry false feeble female foolish future green ill last late left loose loud low mixed narrow old opposite public rough sad safe secret short shut simple slow small soft solid special strange thin white wrong
 
-# general nouns
-time day year way man world life hand part child eye
-place work week case point group fact home room side
-kind head house friend power hour game end law car
-city team name road tree rock wind fire rain snow
-sun moon star sky sea land hill field farm plant
-leaf root bird fish dog cat horse cow sheep pig
-
-# numbers (strict monosyllable)
-one two three four five six seven eight nine ten
-
-# modifiers
-good bad big small long short high low fast slow
-new old young rich poor strong weak hard soft dark light
+# DotComma extras — game words not in Ogden's Basic English
+add ask big break bring build call car case cast catch chat
+child choose city climb code count creep deal die dig dive draw
+drive eight fast feed feel fill find five four game grow hang
+hear her hide hill him hit hold home hunt it knit know
+learn leave life live lose march me meet mix nine one pack
+pay press purple reach read rich ride rise rock rush score serve
+set seven she shoot show sing sink sit six slam slide speak
+speech spend spin split spot spray stack stand stay steal stir strike
+sweep swing switch teach team ten tend term text them they think
+three throw tone track trust try two type us wait wake want
+we weak wear weigh win words world wrap write
 
 [merges]
 # Two words typed in a row merge into one valid word: a + b = combined
