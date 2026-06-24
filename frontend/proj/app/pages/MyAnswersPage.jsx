@@ -10,6 +10,52 @@ const headingFor = (key) => {
   return i === -1 ? key : gamePages[i].heading.replace(/\*\*/g, "").trim();
 };
 
+// How the AI judge's verdict shows up next to an answer. `ai_verdict` is filled
+// in asynchronously, so it may be null (pending) on a freshly-saved answer.
+const VERDICT_LABEL = {
+  accept: "✓ accepted",
+  reject: "✗ rejected",
+  unsure: "… under review",
+  error: "AI check failed"
+};
+const VERDICT_COLOR = {
+  accept: "#1a7f37",
+  reject: "#c0392b",
+  unsure: "#9a6700",
+  error: "#888"
+};
+// Friendly name for the model tier that settled the verdict.
+const TIER_LABEL = {
+  haiku: "Haiku",
+  sonnet: "Sonnet",
+  opus: "Opus",
+  error: null
+};
+
+function AiVerdict({ answer }) {
+  const verdict = answer.ai_verdict;
+  if (!verdict) {
+    return <span style={{ color: "#9a6700" }}>… checking</span>;
+  }
+  const tier = TIER_LABEL[answer.ai_tier];
+  const conf =
+    verdict === "accept" || verdict === "reject"
+      ? answer.ai_confidence != null
+        ? ` ${answer.ai_confidence}%`
+        : ""
+      : "";
+  return (
+    <span
+      style={{ color: VERDICT_COLOR[verdict] || "#888" }}
+      title={answer.ai_reason || undefined}
+    >
+      {VERDICT_LABEL[verdict] || verdict}
+      {conf}
+      {tier ? ` · ${tier}` : ""}
+    </span>
+  );
+}
+
 // The signed-in user's saved answers, grouped by prompt in deck order.
 export default function MyAnswersPage({ menu, user, onBack, onSignIn }) {
   const [answers, setAnswers] = useState(null); // null = loading
@@ -84,6 +130,9 @@ export default function MyAnswersPage({ menu, user, onBack, onSignIn }) {
                       {" · "}
                       {new Date(a.created_at).toLocaleDateString()}
                     </span>
+                    <div style={{ fontSize: 13, marginTop: 2 }}>
+                      <AiVerdict answer={a} />
+                    </div>
                   </div>
                 ))}
               </div>

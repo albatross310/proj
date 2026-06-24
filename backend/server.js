@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const db = require("./db.js");
 const { validateText } = require("./words.js");
 const auth = require("./auth.js");
+const aiJudge = require("./ai-judge.js");
 
 // Prompt deck, generated from content/prompts.txt (see scripts/build-content.mjs).
 const prompts = require("./shared/prompts.json");
@@ -95,7 +96,8 @@ app.get("/api/me/answers", async (request, reply) => {
   if (!user) return reply.code(401).send({ error: "Not signed in." });
 
   const { rows } = await db.query(`
-    SELECT id, prompt_key, answer_text, all_words_valid, score, visibility, created_at
+    SELECT id, prompt_key, answer_text, all_words_valid, score, visibility, created_at,
+           ai_verdict, ai_tier, ai_confidence, ai_reason
     FROM answers
     WHERE user_id = $1
     ORDER BY created_at DESC, id DESC
@@ -195,6 +197,13 @@ app.post("/api/answers", async (request, reply) => {
     score,
     vis
   ]);
+
+  // Fire-and-forget AI judge: decides whether the rewrite captures the prompt's
+  // meaning, escalating Haiku -> Sonnet -> Opus. Never blocks the response; the
+  // verdict is written back onto the row (ai_verdict/ai_tier/...) when ready.
+  aiJudge
+    .judgeNewAnswer(rows[0])
+    .catch((err) => console.error("[ai-judge]", err.message));
 
   // Rotating playful results title (frontend holds the actual strings).
   const outcome = validation.allValid ? "win" : "lose";

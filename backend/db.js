@@ -58,6 +58,18 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- AI judge verdict (see ai-judge.js). Filled in asynchronously after the
+    -- answer is stored — Haiku -> Sonnet -> Opus cascade, e-mail for the rest.
+    --   ai_verdict     'accept' | 'reject' | 'unsure' | 'error' | NULL (pending)
+    --   ai_tier        which model settled it: 'haiku' | 'sonnet' | 'opus' | 'error'
+    --   ai_confidence  0-100, the model's stated confidence
+    --   ai_reason      one-line justification
+    ALTER TABLE answers ADD COLUMN IF NOT EXISTS ai_verdict TEXT;
+    ALTER TABLE answers ADD COLUMN IF NOT EXISTS ai_tier TEXT;
+    ALTER TABLE answers ADD COLUMN IF NOT EXISTS ai_confidence INTEGER;
+    ALTER TABLE answers ADD COLUMN IF NOT EXISTS ai_reason TEXT;
+    ALTER TABLE answers ADD COLUMN IF NOT EXISTS ai_judged_at TIMESTAMPTZ;
+
     CREATE INDEX IF NOT EXISTS idx_answers_prompt_key ON answers (prompt_key);
     CREATE INDEX IF NOT EXISTS idx_answers_user_id ON answers (user_id);
 
