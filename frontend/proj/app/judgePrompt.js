@@ -17,7 +17,7 @@ export const JUDGE_SYSTEM = [
   "nonsense.",
   "",
   "Return one of: 'accept', 'reject', or 'unsure'.",
-  "Only return 'accept' or 'reject' when you are at least 98% confident either",
+  "Only return 'accept' or 'reject' when you are at least 95% confident either",
   "way. If there is any real doubt, return 'unsure'. Always report your honest",
   "confidence (0-100) and a one-line reason."
 ].join("\n");

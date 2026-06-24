@@ -22,7 +22,7 @@ const promptsByKey = new Map(prompts.map((p) => [p.key, p]));
 
 // Confidence (0-100) a model must reach to commit to accept/reject. Anything
 // less is treated as "unsure" and escalated to the next tier.
-const CONFIDENCE_THRESHOLD = 98;
+const CONFIDENCE_THRESHOLD = 95;
 
 // How often the Opus drain runs over the accumulated "unsure" answers.
 const OPUS_INTERVAL_MS = 10 * 60 * 1000;
@@ -84,7 +84,7 @@ const SYSTEM_PROMPT = [
   "nonsense.",
   "",
   "Return one of: 'accept', 'reject', or 'unsure'.",
-  "Only return 'accept' or 'reject' when you are at least 98% confident either",
+  "Only return 'accept' or 'reject' when you are at least 95% confident either",
   "way. If there is any real doubt, return 'unsure'. Always report your honest",
   "confidence (0-100) and a one-line reason."
 ].join("\n");
