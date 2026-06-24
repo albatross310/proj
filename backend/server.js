@@ -340,6 +340,46 @@ app.post("/api/answers/:answerId/contest", async (request, reply) => {
   return { ok: true, ...result };
 });
 
+// Notifications for the signed-in user (delivered when Opus settles a review answer).
+app.get("/api/me/notifications", async (request, reply) => {
+  const user = await auth.getUserForRequest(request);
+  if (!user) return reply.code(401).send({ error: "Not signed in." });
+
+  const { rows } = await db.query(`
+    SELECT id, answer_id, message, read, created_at
+    FROM notifications
+    WHERE user_id = $1
+    ORDER BY created_at DESC
+    LIMIT 50
+  `, [user.id]);
+
+  return { notifications: rows };
+});
+
+// Mark all notifications read.
+app.post("/api/me/notifications/read-all", async (request, reply) => {
+  const user = await auth.getUserForRequest(request);
+  if (!user) return reply.code(401).send({ error: "Not signed in." });
+
+  await db.query("UPDATE notifications SET read = true WHERE user_id = $1", [user.id]);
+  return { ok: true };
+});
+
+// Mark a single notification read.
+app.post("/api/me/notifications/:id/read", async (request, reply) => {
+  const user = await auth.getUserForRequest(request);
+  if (!user) return reply.code(401).send({ error: "Not signed in." });
+
+  const id = Number(request.params.id);
+  if (!Number.isInteger(id)) return reply.code(400).send({ error: "Invalid id." });
+
+  await db.query(
+    "UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2",
+    [id, user.id]
+  );
+  return { ok: true };
+});
+
 // Dev-only: browse all stored answers in the browser.
 // Disabled in production (set NODE_ENV=production when deploying).
 // Emails are masked by default; append ?full=1 to see them unmasked.

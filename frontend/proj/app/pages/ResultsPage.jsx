@@ -25,7 +25,7 @@ function headline(resultStatus, resultMessage, pendingStep) {
     case "rejected":
       return { text: "Not quite — that's not what the line means.", color: "#c0392b" };
     case "review":
-      return { text: "Putting it on the backburner for Dear Old Opus…", color: "#9a6700" };
+      return { text: "Putting it on the backburner for Dear Old Opus…", color: "#9a6700", subtitle: "He'll be back to you within 15 minutes — you can keep playing in the meantime." };
     case "lose":
     case "win":
     default:
@@ -79,6 +79,9 @@ export default function ResultsPage({
         {menu}
         <h2 style={{ fontSize: 24, minHeight: 200, color: h.color, opacity: h.opacity }}>
           <br /><br />{h.text}
+          {h.subtitle && (
+            <><br /><span style={{ fontSize: 16, fontWeight: "normal", display: "block", marginTop: 8, opacity: 0.8 }}>{h.subtitle}</span></>
+          )}
         </h2>
         <div className="dc-typebox" style={{ ...boxStyle, margin: "30px 0" }}>
           {resultWords.map((t, i) => (

@@ -13,6 +13,8 @@ export default function Menu({
   onSignIn,
   onSettings,
   onMyAnswers,
+  onNotifications,
+  unreadCount,
   onResetProgress,
   onSignOut
 }) {
@@ -22,6 +24,39 @@ export default function Menu({
       onClick={(e) => e.stopPropagation()}
       style={{ position: "absolute", top: 10, right: 10, textAlign: "right", zIndex: 10 }}
     >
+      {user && unreadCount > 0 && (
+        <button
+          aria-label={`${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
+          onClick={onNotifications}
+          style={{
+            fontSize: 18,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            marginRight: 4,
+            position: "relative"
+          }}
+        >
+          🔔
+          <span style={{
+            position: "absolute",
+            top: -4,
+            right: -4,
+            background: "#e11d48",
+            color: "#fff",
+            borderRadius: "50%",
+            fontSize: 10,
+            minWidth: 16,
+            height: 16,
+            lineHeight: "16px",
+            textAlign: "center",
+            padding: "0 3px",
+            fontStyle: "normal"
+          }}>
+            {unreadCount}
+          </span>
+        </button>
+      )}
       <button
         aria-label="Menu"
         onClick={() => {

@@ -84,6 +84,17 @@ async function init() {
     -- The top-answers query LEFT JOINs + GROUPs votes by answer_id, so index it.
     CREATE INDEX IF NOT EXISTS idx_answer_votes_answer_id ON answer_votes (answer_id);
 
+    -- In-app notifications delivered when the Opus batch settles a "review" answer.
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      answer_id INTEGER REFERENCES answers(id) ON DELETE SET NULL,
+      message TEXT NOT NULL,
+      read BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications (user_id, read, created_at DESC);
+
     -- Tracks the last-shown result-message index per outcome ('win'/'lose')
     -- so the playful titles rotate randomly without repeating back to back.
     CREATE TABLE IF NOT EXISTS message_state (

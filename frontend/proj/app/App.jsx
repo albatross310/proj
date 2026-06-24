@@ -16,6 +16,7 @@ import AboutPage from "./pages/AboutPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import MyAnswersPage from "./pages/MyAnswersPage.jsx";
+import NotificationsPage from "./pages/NotificationsPage.jsx";
 
 const GREEN = "#15803d";
 const RED = "#e11d48";
@@ -30,6 +31,7 @@ function App() {
   const [resultStatus, setResultStatus] = useState("pending"); // pending|win|lose|rejected|review
   const [contestNote, setContestNote] = useState("");
   const [submittedAnswerId, setSubmittedAnswerId] = useState(null);
+  const [submitError, setSubmitError] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [results, setResults] = useState([]);
   const [promptIndex, setPromptIndex] = useState(0);
@@ -54,12 +56,26 @@ function App() {
   // ── Account + social data ────────────────────────────────────────────────
   const { user, setUser, signOut } = useAuth();
   const [answersVersion, setAnswersVersion] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const unreadCount = notifications.filter((n) => !n.read).length;
   const { topAnswers, likeAnswer } = useTopAnswers(
     page,
     promptKeys[promptIndex],
     sortBy,
     answersVersion
   );
+  // Poll notifications for signed-in users every 60 s.
+  useEffect(() => {
+    if (!user) { setNotifications([]); return; }
+    const fetch = () =>
+      apiFetch("/api/me/notifications", { auth: true })
+        .then((d) => setNotifications(d?.notifications || []))
+        .catch(() => {});
+    fetch();
+    const t = setInterval(fetch, 60000);
+    return () => clearInterval(t);
+  }, [user]);
+
   const [likeNote, setLikeNote] = useState("");
   const [shareNote, setShareNote] = useState("");
 
@@ -88,7 +104,8 @@ function App() {
     debounceRef.current = setTimeout(() => {
       getSocket()?.emit("validate_text", text);
     }, 100);
-  }, [text]);
+    if (submitError) setSubmitError("");
+  }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const s = getSocket();
@@ -179,18 +196,22 @@ function App() {
   const submitAnswer = () => {
     if (!text.trim()) return;
 
+    // Block submit when any alphabetic word is off the allowed list.
+    const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
+    const allGood =
+      wordList.length > 0 &&
+      wordList.every((w) => allowedWords.has(w.toLowerCase()));
+
+    if (!allGood) {
+      setSubmitError("Try to rewrite with green words only.");
+      return;
+    }
+
     setResults((prev) => {
       const copy = [...prev];
       copy[promptIndex] = text;
       return copy;
     });
-
-    // Local validation for the immediate fallback title; the backend recomputes
-    // authoritatively and chooses the rotating message.
-    const wordList = words.filter((w) => /^[a-z]+$/i.test(w));
-    const allGood =
-      wordList.length > 0 &&
-      wordList.every((w) => allowedWords.has(w.toLowerCase()));
     const pool = allGood ? WIN_MESSAGES : LOSE_MESSAGES;
     setResultMessage(pool[resultMsgRef.current++ % pool.length]);
 
@@ -314,6 +335,8 @@ function App() {
       onSignIn={() => goToPage("account")}
       onSettings={() => goToPage("settings")}
       onMyAnswers={() => goToPage("myanswers")}
+      onNotifications={() => goToPage("notifications")}
+      unreadCount={unreadCount}
       onResetProgress={() => {
         try {
           localStorage.removeItem("dotcomma_progress");
@@ -360,6 +383,20 @@ function App() {
         user={user}
         onBack={backToReturn}
         onSignIn={() => goToPage("account")}
+      />
+    );
+  }
+
+  if (page === "notifications") {
+    return (
+      <NotificationsPage
+        menu={menu}
+        notifications={notifications}
+        onBack={backToReturn}
+        onMarkAllRead={() => {
+          apiFetch("/api/me/notifications/read-all", { method: "POST", auth: true }).catch(() => {});
+          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        }}
       />
     );
   }
@@ -467,6 +504,7 @@ function App() {
       wordColors={wordColors}
       inputRef={inputRef}
       onSubmit={submitAnswer}
+      submitError={submitError}
       onGoBack={() => {
         setPromptIndex((i) => i - 1);
         setPage("results");

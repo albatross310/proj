@@ -20,6 +20,7 @@ export default function GamePage({
   wordColors,
   inputRef,
   onSubmit,
+  submitError,
   onGoBack
 }) {
   // With reveal mode on, each part below the prompt takes a further click:
@@ -115,6 +116,11 @@ export default function GamePage({
               autoFocus
               style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
             />
+            {submitError && (
+              <p style={{ fontSize: 15, color: "#e11d48", marginBottom: 6, marginTop: -10 }}>
+                {submitError}
+              </p>
+            )}
             <div style={buttonRowStyle}>
               <button className="dc-button" style={buttonStyle} onClick={onSubmit}>
                 Enter

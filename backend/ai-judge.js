@@ -78,18 +78,24 @@ const VERDICT_SCHEMA = {
 const SYSTEM_PROMPT = [
   "You are the judge for DotComma, a word game.",
   "The player is shown one line written in wordy, old, or convoluted language,",
-  "and must REWRITE it in short, plain words while keeping the same meaning.",
+  "and rewrites it in their own, simpler words.",
   "",
-  "Judge ONLY by meaning: does the player's answer convey the meaning of the",
-  "ORIGINAL line? There is no single correct wording — accept any answer,",
-  "however phrased, that captures the gist of the original in plainer words.",
+  "Your ONLY test: does the player's answer mean the same thing as the ORIGINAL",
+  "line? It must GENUINELY preserve the meaning — but the reader is allowed to",
+  "take LIBERTIES in how they interpret and express it. Word choice, length and",
+  "style do NOT matter; judge meaning, not wording, and never penalise an answer",
+  "for the words it uses. There is no single correct answer.",
   "",
-  "Be PERMISSIVE. Your only job is to filter out answers that are OBVIOUSLY",
-  "wrong — off-topic, nonsense or gibberish, blank, or that clearly contradict",
-  "or completely miss the meaning. Accept anything that plausibly captures the",
-  "gist in plainer words, even if it is loose, partial, clumsy, or not how you",
-  "would phrase it. A wrongly REJECTED good answer is far worse than letting a",
-  "so-so answer through, so when in any doubt, ACCEPT.",
+  "Give the player room to be CREATIVE: clever paraphrases, figures of speech,",
+  "metaphors and unusual interpretations are all welcome, as long as they still",
+  "capture the meaning of the original.",
+  "",
+  "Be PERMISSIVE — only filter out answers that are clearly wrong: off-topic,",
+  "nonsense or gibberish, blank, or that contradict or miss the meaning. Also",
+  "reject answers that are TOO VAGUE to count — ones that gut the specific",
+  "meaning by swapping real content for empty placeholders (e.g. \"do the thing\",",
+  "\"stuff happens\"). A wrongly REJECTED good answer is worse than letting a",
+  "so-so one through, so when in genuine doubt, ACCEPT.",
   "",
   "Return one of: 'accept', 'reject', or 'unsure'. Only 'reject' when you are",
   "essentially certain (>=98%) the answer is wrong. Use 'unsure' only for a",
@@ -107,7 +113,7 @@ function buildUserPrompt(prompt, answerText) {
     "",
     `Player's answer: "${answerText}"`,
     "",
-    "Does the player's answer correctly rewrite the original line in plain words"
+    "Does the player's answer mean the same thing as the original line, loosely speaking?"
   ].join("\n");
 }
 
@@ -192,7 +198,8 @@ async function judgeNewAnswer(answer) {
     opusQueue.push({
       id: answer.id,
       prompt_key: answer.prompt_key,
-      answer_text: answer.answer_text
+      answer_text: answer.answer_text,
+      user_id: answer.user_id || null
     });
   }
 
@@ -206,6 +213,14 @@ async function judgeNewAnswer(answer) {
 
 // Every 10 minutes, re-judge the accumulated "unsure" answers with Opus.
 // Whatever Opus still can't call gets e-mailed for human review.
+async function notifyUser(userId, answerId, message) {
+  if (!userId) return;
+  await db.query(
+    "INSERT INTO notifications (user_id, answer_id, message) VALUES ($1, $2, $3)",
+    [userId, answerId, message]
+  ).catch((err) => console.error("[ai-judge] notification insert failed:", err.message));
+}
+
 async function drainOpusQueue() {
   if (!enabled || opusQueue.length === 0) return;
 
@@ -218,7 +233,17 @@ async function drainOpusQueue() {
     try {
       const result = await classify("opus", prompt, item.answer_text);
       await persist(item.id, "opus", result);
-      if (result.verdict === "unsure") stragglers.push({ ...item, result });
+      if (result.verdict === "unsure") {
+        stragglers.push({ ...item, result });
+      } else {
+        const snippet = item.answer_text.length > 60
+          ? item.answer_text.slice(0, 60) + "…"
+          : item.answer_text;
+        const msg = result.verdict === "accept"
+          ? `Opus accepted your answer: "${snippet}" ✓`
+          : `Opus rejected your answer: "${snippet}"`;
+        await notifyUser(item.user_id, item.id, msg);
+      }
     } catch (err) {
       console.error(`[ai-judge] Opus failed on answer ${item.id}:`, err.message);
       const result = { verdict: "error", confidence: 0, reason: err.message };
