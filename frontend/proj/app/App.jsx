@@ -28,6 +28,7 @@ function App() {
   const [aiResult, setAiResult] = useState("pending"); // "pending" | {verdict,...} | null
   const [resultStatus, setResultStatus] = useState("pending"); // pending|win|lose|rejected|review
   const [contestNote, setContestNote] = useState("");
+  const [submittedAnswerId, setSubmittedAnswerId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [results, setResults] = useState([]);
   const [promptIndex, setPromptIndex] = useState(0);
@@ -195,6 +196,7 @@ function App() {
     setAiResult("pending"); // show "checking…" until the verdict comes back
     setResultStatus("pending"); // headline waits for the combined verdict
     setContestNote("");
+    setSubmittedAnswerId(null);
     apiFetch("/api/answers", {
       method: "POST",
       auth: true,
@@ -209,6 +211,7 @@ function App() {
       .then((data) => {
         setAnswersVersion((v) => v + 1);
         setAiResult(data?.ai ?? null); // object = verdict, null = unavailable
+        setSubmittedAnswerId(data?.answer?.id ?? null);
         // Fall back to the local word-only result if the server didn't send one.
         setResultStatus(data?.status ?? (allGood ? "win" : "lose"));
       })
@@ -267,10 +270,17 @@ function App() {
     }
   };
 
-  // Contest a rejected verdict. Placeholder for now — the real version will
-  // POST the answer to the backend and e-mail it for human review.
-  const onContest = () => {
-    setContestNote("Thanks — we'll take another look at this one. ✓");
+  // Contest a rejected verdict: ask the backend to e-mail it for human review.
+  const onContest = async () => {
+    if (!submittedAnswerId) return;
+    setContestNote("Sending…");
+    try {
+      await apiFetch(`/api/answers/${submittedAnswerId}/contest`, { method: "POST" });
+      setContestNote("Thanks — we'll take another look at this one. ✓");
+    } catch (err) {
+      console.error("Could not contest answer:", err);
+      setContestNote("Couldn't send that just now — please try again later.");
+    }
   };
 
   const changeSort = (s) => {

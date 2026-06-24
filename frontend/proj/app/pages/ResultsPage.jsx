@@ -1,6 +1,16 @@
+import { useState, useEffect } from "react";
 import { allowedWords, mergeWords } from "../words.js";
 import { formatSubmitted } from "../messages.js";
 import { containerStyle, boxStyle, buttonStyle, colorFor } from "../styles.js";
+
+// While the verdict is pending, narrate the cascade. Haiku answers fast, so a
+// decisive answer never gets past the first line; only a genuinely escalating
+// answer (slow response) advances to the Sonnet line.
+const PENDING_MESSAGES = [
+  "Checking in with Old Mate Haiku…",
+  "Escalating to Mister Sonnet…",
+  "Putting it on the backburner for Dear Old Opus…"
+];
 
 // The headline above the answer, driven by the combined result status:
 //   pending  — verdict not back yet
@@ -8,14 +18,14 @@ import { containerStyle, boxStyle, buttonStyle, colorFor } from "../styles.js";
 //   lose     — words off-list (playful lose title)
 //   rejected — words valid but the AI says the meaning is wrong
 //   review   — words valid, AI unsure; a human / Opus will confirm shortly
-function headline(resultStatus, resultMessage) {
+function headline(resultStatus, resultMessage, pendingStep) {
   switch (resultStatus) {
     case "pending":
-      return { text: "Checking your answer…", color: "inherit", opacity: 0.6 };
+      return { text: PENDING_MESSAGES[pendingStep], color: "inherit", opacity: 0.6 };
     case "rejected":
       return { text: "Not quite — that's not what the line means.", color: "#c0392b" };
     case "review":
-      return { text: "Close call — we'll confirm this one shortly.", color: "#9a6700" };
+      return { text: "Putting it on the backburner for Dear Old Opus…", color: "#9a6700" };
     case "lose":
     case "win":
     default:
@@ -42,7 +52,23 @@ export default function ResultsPage({
   onLike
 }) {
   const resultWords = mergeWords(resultText.match(/[a-z]+|./gi) || []);
-  const h = headline(resultStatus, resultMessage);
+
+  // Advance the pending narration: Haiku → Sonnet → Opus while we wait.
+  const [pendingStep, setPendingStep] = useState(0);
+  useEffect(() => {
+    if (resultStatus !== "pending") {
+      setPendingStep(0);
+      return;
+    }
+    const t1 = setTimeout(() => setPendingStep(1), 2500);
+    const t2 = setTimeout(() => setPendingStep(2), 7000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [resultStatus]);
+
+  const h = headline(resultStatus, resultMessage, pendingStep);
   const reason = aiResult && typeof aiResult === "object" ? aiResult.reason : null;
 
   return (

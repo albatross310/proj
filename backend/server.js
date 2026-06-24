@@ -217,7 +217,7 @@ app.post("/api/answers", async (request, reply) => {
   // the judge keeps running and persisting in the background either way.
   const ai = await Promise.race([
     aiJudge.judgeNewAnswer(rows[0]),
-    new Promise((resolve) => setTimeout(() => resolve(null), 12000))
+    new Promise((resolve) => setTimeout(() => resolve(null), 20000))
   ]).catch((err) => {
     console.error("[ai-judge]", err.message);
     return null;
@@ -270,6 +270,7 @@ app.get("/api/prompts/:promptKey/top-answers", async (request) => {
     LEFT JOIN users u ON u.id = a.user_id
     LEFT JOIN answer_votes v ON v.answer_id = a.id
     WHERE a.prompt_key = $2 AND a.visibility = 'public'
+      AND a.ai_verdict IS DISTINCT FROM 'reject'
     GROUP BY a.id, u.display_name
     ORDER BY ${orderBy}
     LIMIT 7
@@ -315,6 +316,28 @@ app.post("/api/answers/:answerId/like", async (request, reply) => {
   ).rows[0].likes;
 
   return { liked: !existing, likes };
+});
+
+// Contest a rejected verdict: e-mails the answer + AI reason for human review.
+// Open to anyone (answers can be anonymous), lightly rate-limited per IP.
+app.post("/api/answers/:answerId/contest", async (request, reply) => {
+  if (!rateLimit(`contest:${request.ip}`, 10, 60 * 1000)) {
+    return reply.code(429).send({ error: "Slow down a moment and try again." });
+  }
+
+  const id = Number(request.params.answerId);
+  if (!Number.isInteger(id)) {
+    return reply.code(400).send({ error: "Invalid answer id." });
+  }
+
+  const answer = (await db.query("SELECT * FROM answers WHERE id = $1", [id])).rows[0];
+  if (!answer) return reply.code(404).send({ error: "Answer not found." });
+  if (answer.ai_verdict !== "reject") {
+    return reply.code(400).send({ error: "This answer wasn't rejected." });
+  }
+
+  const result = await aiJudge.emailContest(answer);
+  return { ok: true, ...result };
 });
 
 // Dev-only: browse all stored answers in the browser.
