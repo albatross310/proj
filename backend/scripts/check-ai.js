@@ -19,7 +19,7 @@ const SCHEMA = {
   type: "object",
   properties: {
     verdict: { type: "string", enum: ["accept", "reject", "unsure"] },
-    confidence: { type: "integer", minimum: 0, maximum: 100 },
+    confidence: { type: "integer", description: "Confidence from 0 to 100" },
     reason: { type: "string" }
   },
   required: ["verdict", "confidence", "reason"],
