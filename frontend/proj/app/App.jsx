@@ -25,6 +25,7 @@ function App() {
   const [validated, setValidated] = useState([]); // server-authoritative per-word validity
   const [page, setPage] = useState("game"); // game | intro | results | end | about | account | settings | myanswers
   const [resultMessage, setResultMessage] = useState("");
+  const [aiResult, setAiResult] = useState("pending"); // "pending" | {verdict,...} | null
   const [isTyping, setIsTyping] = useState(false);
   const [results, setResults] = useState([]);
   const [promptIndex, setPromptIndex] = useState(0);
@@ -189,6 +190,7 @@ function App() {
     const pool = allGood ? WIN_MESSAGES : LOSE_MESSAGES;
     setResultMessage(pool[resultMsgRef.current++ % pool.length]);
 
+    setAiResult("pending"); // show "checking…" until the verdict comes back
     apiFetch("/api/answers", {
       method: "POST",
       auth: true,
@@ -200,8 +202,14 @@ function App() {
         loseCount: LOSE_MESSAGES.length
       }
     })
-      .then(() => setAnswersVersion((v) => v + 1))
-      .catch((err) => console.error("Could not save answer:", err));
+      .then((data) => {
+        setAnswersVersion((v) => v + 1);
+        setAiResult(data?.ai ?? null); // object = verdict, null = unavailable
+      })
+      .catch((err) => {
+        console.error("Could not save answer:", err);
+        setAiResult(null);
+      });
 
     markCompleted(promptKeys[promptIndex]);
     setText("");
@@ -387,6 +395,7 @@ function App() {
       <ResultsPage
         menu={menu}
         resultMessage={resultMessage}
+        aiResult={aiResult}
         resultText={results[promptIndex] || ""}
         onContinue={() => {
           if (promptIndex >= gamePages.length - 1) {

@@ -198,12 +198,19 @@ app.post("/api/answers", async (request, reply) => {
     vis
   ]);
 
-  // Fire-and-forget AI judge: decides whether the rewrite captures the prompt's
-  // meaning, escalating Haiku -> Sonnet -> Opus. Never blocks the response; the
-  // verdict is written back onto the row (ai_verdict/ai_tier/...) when ready.
-  aiJudge
-    .judgeNewAnswer(rows[0])
-    .catch((err) => console.error("[ai-judge]", err.message));
+  // AI judge: decides whether the rewrite captures the prompt's meaning. The
+  // fast Haiku pass is awaited so the player sees a verdict immediately on the
+  // results screen; if Haiku is unsure it escalates to Sonnet -> Opus in the
+  // background, writing the final verdict back onto the row (ai_verdict/...).
+  // A timeout guards against a slow/hung call ever blocking the submission —
+  // the judge keeps running and persisting in the background either way.
+  const ai = await Promise.race([
+    aiJudge.judgeNewAnswer(rows[0]),
+    new Promise((resolve) => setTimeout(() => resolve(null), 12000))
+  ]).catch((err) => {
+    console.error("[ai-judge]", err.message);
+    return null;
+  });
 
   // Rotating playful results title (frontend holds the actual strings).
   const outcome = validation.allValid ? "win" : "lose";
@@ -212,7 +219,7 @@ app.post("/api/answers", async (request, reply) => {
     : request.body.loseCount;
   const resultMessageIndex = await nextMessageIndex(outcome, poolSize);
 
-  return { answer: rows[0], validation, outcome, resultMessageIndex };
+  return { answer: rows[0], validation, outcome, resultMessageIndex, ai };
 });
 
 // Public top answers for a prompt, with like counts.

@@ -4,9 +4,37 @@ import { containerStyle, boxStyle, buttonStyle, colorFor } from "../styles.js";
 
 // Result title + the player's coloured answer, then the public top answers
 // with sort + like controls. All data + handlers come from App.
+// The AI judge's verdict on whether the rewrite captures the prompt's meaning.
+// `aiResult` is "pending" (still checking), an object { verdict, ... }, or null
+// (judge unavailable). accept/reject below 98% confidence arrive as "unsure".
+function AiVerdict({ aiResult }) {
+  if (aiResult === null) return null; // judge off / errored — say nothing
+  if (aiResult === "pending") {
+    return (
+      <p style={{ fontSize: 15, opacity: 0.6, margin: "0 0 18px" }}>
+        Checking your answer…
+      </p>
+    );
+  }
+  const { verdict, reason } = aiResult;
+  const map = {
+    accept: { text: "✓ This captures the meaning", color: "#1a7f37" },
+    reject: { text: "✗ This misses the meaning", color: "#c0392b" },
+    unsure: { text: "… A human will take a look at this one", color: "#9a6700" },
+    error: { text: "Couldn't check this answer", color: "#888" }
+  };
+  const v = map[verdict] || map.error;
+  return (
+    <p style={{ fontSize: 16, color: v.color, margin: "0 0 18px" }} title={reason || undefined}>
+      {v.text}
+    </p>
+  );
+}
+
 export default function ResultsPage({
   menu,
   resultMessage,
+  aiResult,
   resultText,
   onContinue,
   onTryAgain,
@@ -34,6 +62,7 @@ export default function ResultsPage({
             </span>
           ))}
         </div>
+        <AiVerdict aiResult={aiResult} />
         <button className="dc-button" style={buttonStyle} onClick={onContinue}>
           Continue
         </button>

@@ -151,38 +151,58 @@ async function persist(answerId, tier, result) {
 // Single-instance deploy, so a plain array is enough (matches the rate limiter).
 const opusQueue = [];
 
-// Entry point: judge a freshly-stored answer. Fire-and-forget from the route.
+// Entry point: judge a freshly-stored answer. Runs the fast Haiku pass and
+// awaits it so the caller can show the verdict immediately; if Haiku is unsure,
+// escalation to Sonnet (then the Opus queue) continues in the background.
 // `answer` is the inserted row ({ id, prompt_key, answer_text, ... }).
+// Returns { verdict, tier, confidence, reason } or null when judging is off.
 async function judgeNewAnswer(answer) {
-  if (!enabled || !answer) return;
+  if (!enabled || !answer) return null;
   const prompt = promptsByKey.get(answer.prompt_key);
-  if (!prompt) return;
+  if (!prompt) return null;
 
+  let result;
   try {
-    let tier = "haiku";
-    let result = await classify("haiku", prompt, answer.answer_text);
-
-    if (result.verdict === "unsure") {
-      tier = "sonnet";
-      result = await classify("sonnet", prompt, answer.answer_text);
-    }
-
-    await persist(answer.id, tier, result);
-
-    if (result.verdict === "unsure") {
-      opusQueue.push({
-        id: answer.id,
-        prompt_key: answer.prompt_key,
-        answer_text: answer.answer_text
-      });
-    }
+    result = await classify("haiku", prompt, answer.answer_text);
   } catch (err) {
-    console.error(`[ai-judge] failed to judge answer ${answer.id}:`, err.message);
+    console.error(`[ai-judge] Haiku failed on answer ${answer.id}:`, err.message);
     await persist(answer.id, "error", {
       verdict: "error",
       confidence: 0,
       reason: err.message
     }).catch(() => {});
+    return null;
+  }
+
+  await persist(answer.id, "haiku", result);
+
+  if (result.verdict === "unsure") {
+    // Don't make the player wait on the slower model — escalate in the
+    // background and let the verdict update on the row (and My Answers) later.
+    escalate(answer, prompt).catch((err) =>
+      console.error(`[ai-judge] escalation failed on answer ${answer.id}:`, err.message)
+    );
+  }
+
+  return {
+    verdict: result.verdict,
+    tier: "haiku",
+    confidence: result.confidence,
+    reason: result.reason
+  };
+}
+
+// Sonnet re-judges a Haiku-unsure answer; anything still unsure joins the Opus
+// queue for the 10-minute drain.
+async function escalate(answer, prompt) {
+  const result = await classify("sonnet", prompt, answer.answer_text);
+  await persist(answer.id, "sonnet", result);
+  if (result.verdict === "unsure") {
+    opusQueue.push({
+      id: answer.id,
+      prompt_key: answer.prompt_key,
+      answer_text: answer.answer_text
+    });
   }
 }
 
