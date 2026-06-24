@@ -270,4 +270,31 @@ if (enabled) {
   setInterval(drainOpusQueue, OPUS_INTERVAL_MS).unref();
 }
 
-module.exports = { judgeNewAnswer, drainOpusQueue };
+// Live diagnostic: confirms the API key actually works by running one real
+// Haiku judgement against a known-good answer. Returns the verdict or the error.
+async function selfTest() {
+  if (!enabled) {
+    return { enabled: false, ok: false, error: "ANTHROPIC_API_KEY is not set" };
+  }
+  const sample = promptsByKey.get("rule-2-short-words");
+  try {
+    const result = await classify("haiku", sample, "I use short words to talk");
+    return { enabled: true, ok: true, model: MODELS.haiku, result };
+  } catch (err) {
+    return {
+      enabled: true,
+      ok: false,
+      model: MODELS.haiku,
+      status: err.status || null,
+      error: err.message
+    };
+  }
+}
+
+module.exports = {
+  judgeNewAnswer,
+  drainOpusQueue,
+  selfTest,
+  enabled,
+  queueDepth: () => opusQueue.length
+};

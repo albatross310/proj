@@ -68,6 +68,17 @@ setInterval(() => {
 
 app.get("/", async () => ({ ok: true }));
 
+// AI judge health. GET /api/health/ai reports whether the key is configured and
+// the current Opus-queue depth. Add ?test=1 to run one real Haiku judgement and
+// confirm the key actually works (returns the verdict, or the API error).
+app.get("/api/health/ai", async (request) => {
+  const base = { enabled: aiJudge.enabled, queueDepth: aiJudge.queueDepth() };
+  if (request.query.test === "1") {
+    return { ...base, selfTest: await aiJudge.selfTest() };
+  }
+  return base;
+});
+
 // Auth is handled by Supabase Auth on the client (sign-in / sign-up / password
 // reset all happen there). The backend just verifies the Supabase access token
 // (auth.getUserForRequest) and maps it to a profile row. There are no auth
