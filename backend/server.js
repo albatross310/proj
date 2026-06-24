@@ -223,14 +223,30 @@ app.post("/api/answers", async (request, reply) => {
     return null;
   });
 
-  // Rotating playful results title (frontend holds the actual strings).
-  const outcome = validation.allValid ? "win" : "lose";
+  // Combined result: an answer only WINS when its words are all valid AND the
+  // AI accepts the meaning. The word list and the meaning check are separate
+  // gates, so we report a precise status the results screen can act on:
+  //   "lose"     — words off-list (fails regardless of meaning)
+  //   "rejected" — words ok, but the AI says the meaning is wrong (-> Contest)
+  //   "review"   — words ok, AI unsure; escalating to Sonnet/Opus in background
+  //   "win"      — words ok AND AI accepts (or the AI is unavailable: we don't
+  //                block a clean answer on our own outage)
+  const aiVerdict = ai ? ai.verdict : null;
+  let status;
+  if (!validation.allValid) status = "lose";
+  else if (aiVerdict === "reject") status = "rejected";
+  else if (aiVerdict === "unsure") status = "review";
+  else status = "win"; // "accept", "error", or AI unavailable (null)
+
+  // Rotating playful title still uses the win/lose pools; "rejected"/"review"
+  // get their own copy on the client, so they draw from the lose pool here.
+  const outcome = status === "win" ? "win" : "lose";
   const poolSize = outcome === "win"
     ? request.body.winCount
     : request.body.loseCount;
   const resultMessageIndex = await nextMessageIndex(outcome, poolSize);
 
-  return { answer: rows[0], validation, outcome, resultMessageIndex, ai };
+  return { answer: rows[0], validation, outcome, status, resultMessageIndex, ai };
 });
 
 // Public top answers for a prompt, with like counts.

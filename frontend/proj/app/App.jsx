@@ -26,6 +26,8 @@ function App() {
   const [page, setPage] = useState("game"); // game | intro | results | end | about | account | settings | myanswers
   const [resultMessage, setResultMessage] = useState("");
   const [aiResult, setAiResult] = useState("pending"); // "pending" | {verdict,...} | null
+  const [resultStatus, setResultStatus] = useState("pending"); // pending|win|lose|rejected|review
+  const [contestNote, setContestNote] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [results, setResults] = useState([]);
   const [promptIndex, setPromptIndex] = useState(0);
@@ -191,6 +193,8 @@ function App() {
     setResultMessage(pool[resultMsgRef.current++ % pool.length]);
 
     setAiResult("pending"); // show "checking…" until the verdict comes back
+    setResultStatus("pending"); // headline waits for the combined verdict
+    setContestNote("");
     apiFetch("/api/answers", {
       method: "POST",
       auth: true,
@@ -205,10 +209,13 @@ function App() {
       .then((data) => {
         setAnswersVersion((v) => v + 1);
         setAiResult(data?.ai ?? null); // object = verdict, null = unavailable
+        // Fall back to the local word-only result if the server didn't send one.
+        setResultStatus(data?.status ?? (allGood ? "win" : "lose"));
       })
       .catch((err) => {
         console.error("Could not save answer:", err);
         setAiResult(null);
+        setResultStatus(allGood ? "win" : "lose");
       });
 
     markCompleted(promptKeys[promptIndex]);
@@ -258,6 +265,12 @@ function App() {
     } catch {
       setShareNote("Share dotcomma.com.au with a friend!");
     }
+  };
+
+  // Contest a rejected verdict. Placeholder for now — the real version will
+  // POST the answer to the backend and e-mail it for human review.
+  const onContest = () => {
+    setContestNote("Thanks — we'll take another look at this one. ✓");
   };
 
   const changeSort = (s) => {
@@ -396,6 +409,9 @@ function App() {
         menu={menu}
         resultMessage={resultMessage}
         aiResult={aiResult}
+        resultStatus={resultStatus}
+        onContest={onContest}
+        contestNote={contestNote}
         resultText={results[promptIndex] || ""}
         onContinue={() => {
           if (promptIndex >= gamePages.length - 1) {

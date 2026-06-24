@@ -2,39 +2,34 @@ import { allowedWords, mergeWords } from "../words.js";
 import { formatSubmitted } from "../messages.js";
 import { containerStyle, boxStyle, buttonStyle, colorFor } from "../styles.js";
 
-// Result title + the player's coloured answer, then the public top answers
-// with sort + like controls. All data + handlers come from App.
-// The AI judge's verdict on whether the rewrite captures the prompt's meaning.
-// `aiResult` is "pending" (still checking), an object { verdict, ... }, or null
-// (judge unavailable). accept/reject below 98% confidence arrive as "unsure".
-function AiVerdict({ aiResult }) {
-  if (aiResult === null) return null; // judge off / errored — say nothing
-  if (aiResult === "pending") {
-    return (
-      <p style={{ fontSize: 15, opacity: 0.6, margin: "0 0 18px" }}>
-        Checking your answer…
-      </p>
-    );
+// The headline above the answer, driven by the combined result status:
+//   pending  — verdict not back yet
+//   win      — words valid AND the AI accepts the meaning (playful win title)
+//   lose     — words off-list (playful lose title)
+//   rejected — words valid but the AI says the meaning is wrong
+//   review   — words valid, AI unsure; a human / Opus will confirm shortly
+function headline(resultStatus, resultMessage) {
+  switch (resultStatus) {
+    case "pending":
+      return { text: "Checking your answer…", color: "inherit", opacity: 0.6 };
+    case "rejected":
+      return { text: "Not quite — that's not what the line means.", color: "#c0392b" };
+    case "review":
+      return { text: "Close call — we'll confirm this one shortly.", color: "#9a6700" };
+    case "lose":
+    case "win":
+    default:
+      return { text: resultMessage, color: "inherit" };
   }
-  const { verdict, reason } = aiResult;
-  const map = {
-    accept: { text: "✓ This captures the meaning", color: "#1a7f37" },
-    reject: { text: "✗ This misses the meaning", color: "#c0392b" },
-    unsure: { text: "… A human will take a look at this one", color: "#9a6700" },
-    error: { text: "Couldn't check this answer", color: "#888" }
-  };
-  const v = map[verdict] || map.error;
-  return (
-    <p style={{ fontSize: 16, color: v.color, margin: "0 0 18px" }} title={reason || undefined}>
-      {v.text}
-    </p>
-  );
 }
 
 export default function ResultsPage({
   menu,
   resultMessage,
   aiResult,
+  resultStatus,
+  onContest,
+  contestNote,
   resultText,
   onContinue,
   onTryAgain,
@@ -47,13 +42,15 @@ export default function ResultsPage({
   onLike
 }) {
   const resultWords = mergeWords(resultText.match(/[a-z]+|./gi) || []);
+  const h = headline(resultStatus, resultMessage);
+  const reason = aiResult && typeof aiResult === "object" ? aiResult.reason : null;
 
   return (
     <div style={{ textAlign: "center", marginTop: 100, fontSize: 24 }}>
       <div className="dc-card-page" style={containerStyle}>
         {menu}
-        <h2 style={{ fontSize: 24, minHeight: 200 }}>
-          <br /><br />{resultMessage}
+        <h2 style={{ fontSize: 24, minHeight: 200, color: h.color, opacity: h.opacity }}>
+          <br /><br />{h.text}
         </h2>
         <div className="dc-typebox" style={{ ...boxStyle, margin: "30px 0" }}>
           {resultWords.map((t, i) => (
@@ -62,7 +59,20 @@ export default function ResultsPage({
             </span>
           ))}
         </div>
-        <AiVerdict aiResult={aiResult} />
+        {resultStatus === "rejected" && (
+          <div style={{ margin: "0 0 18px" }}>
+            {reason && (
+              <p style={{ fontSize: 15, opacity: 0.75, marginBottom: 10 }}>{reason}</p>
+            )}
+            {contestNote ? (
+              <p style={{ fontSize: 15, color: "#1a7f37" }}>{contestNote}</p>
+            ) : (
+              <button className="dc-button" style={buttonStyle} onClick={onContest}>
+                Contest
+              </button>
+            )}
+          </div>
+        )}
         <button className="dc-button" style={buttonStyle} onClick={onContinue}>
           Continue
         </button>
