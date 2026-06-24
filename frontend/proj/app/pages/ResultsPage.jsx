@@ -40,6 +40,7 @@ export default function ResultsPage({
   resultStatus,
   onContest,
   contestNote,
+  judgePrompt,
   resultText,
   onContinue,
   onTryAgain,
@@ -54,6 +55,7 @@ export default function ResultsPage({
   const resultWords = mergeWords(resultText.match(/[a-z]+|./gi) || []);
 
   // Advance the pending narration: Haiku → Sonnet → Opus while we wait.
+  const [showPrompt, setShowPrompt] = useState(false);
   const [pendingStep, setPendingStep] = useState(0);
   useEffect(() => {
     if (resultStatus !== "pending") {
@@ -85,6 +87,57 @@ export default function ResultsPage({
             </span>
           ))}
         </div>
+        {judgePrompt && (
+          <div style={{ margin: "0 0 16px" }}>
+            <button
+              type="button"
+              onClick={() => setShowPrompt((s) => !s)}
+              aria-label="See exactly what we ask the AI judge"
+              title="What we ask the AI judge"
+              aria-expanded={showPrompt}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                border: "1px solid currentColor",
+                background: "transparent",
+                color: "inherit",
+                opacity: 0.55,
+                fontSize: 13,
+                fontStyle: "italic",
+                fontFamily: "Georgia, serif",
+                cursor: "pointer",
+                lineHeight: 1,
+                padding: 0
+              }}
+            >
+              i
+            </button>
+            {showPrompt && (
+              <pre
+                style={{
+                  textAlign: "left",
+                  fontSize: 12,
+                  lineHeight: 1.45,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  background: "rgba(0,0,0,0.04)",
+                  padding: 14,
+                  borderRadius: 8,
+                  maxWidth: 520,
+                  margin: "12px auto 0",
+                  fontFamily: "ui-monospace, Menlo, Consolas, monospace"
+                }}
+              >
+                <strong>This is exactly what we send the AI:</strong>
+                {"\n\n[System]\n"}
+                {judgePrompt.system}
+                {"\n\n[Prompt]\n"}
+                {judgePrompt.user}
+              </pre>
+            )}
+          </div>
+        )}
         {resultStatus === "rejected" && (
           <div style={{ margin: "0 0 18px" }}>
             {reason && (

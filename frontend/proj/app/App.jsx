@@ -4,6 +4,7 @@ import { gamePages, promptKeys, clue } from "./prompts.jsx";
 import { apiFetch } from "./api.js";
 import { getSocket } from "./socket.js";
 import { WIN_MESSAGES, LOSE_MESSAGES } from "./messages.js";
+import { buildJudgePrompt } from "./judgePrompt.js";
 import { colorFor, containerStyle, buttonRowStyle, buttonStyle } from "./styles.js";
 import { useAuth } from "./useAuth.js";
 import { useTopAnswers } from "./useTopAnswers.js";
@@ -422,6 +423,7 @@ function App() {
         resultStatus={resultStatus}
         onContest={onContest}
         contestNote={contestNote}
+        judgePrompt={buildJudgePrompt(promptIndex, results[promptIndex] || "")}
         resultText={results[promptIndex] || ""}
         onContinue={() => {
           if (promptIndex >= gamePages.length - 1) {
