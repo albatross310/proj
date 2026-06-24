@@ -20,9 +20,13 @@ const db = require("./db.js");
 const prompts = require("./shared/prompts.json");
 const promptsByKey = new Map(prompts.map((p) => [p.key, p]));
 
-// Confidence (0-100) a model must reach to commit to accept/reject. Anything
-// less is treated as "unsure" and escalated to the next tier.
-const CONFIDENCE_THRESHOLD = 95;
+// Asymmetric confidence gates (0-100). We want high sensitivity (almost never
+// reject a genuinely good answer) and accept a lower specificity (some weak
+// answers slip through) — i.e. be permissive and only filter the obviously bad.
+// So rejecting needs near-certainty, while accepting needs only a lean. A
+// verdict that doesn't clear its gate becomes "unsure" and escalates.
+const REJECT_CONFIDENCE = 98; // only reject when ~certain the answer is wrong
+const ACCEPT_CONFIDENCE = 50; // accept readily — a simple lean is enough
 
 // How often the Opus drain runs over the accumulated "unsure" answers.
 const OPUS_INTERVAL_MS = 10 * 60 * 1000;
@@ -76,29 +80,30 @@ const SYSTEM_PROMPT = [
   "The player is shown one line written in wordy, old, or convoluted language,",
   "and must REWRITE it in short, plain words while keeping the same meaning.",
   "",
-  "Decide whether the player's answer is a correct plain-words rewrite that",
-  "preserves the meaning of the original line. The list of accepted answers you",
-  "are given are EXAMPLES, not an exhaustive list — accept any wording that",
-  "faithfully captures the meaning in simple words, even if phrased differently.",
-  "Reject answers that change the meaning, miss the point, or are off-topic or",
-  "nonsense.",
+  "Judge ONLY by meaning: does the player's answer convey the meaning of the",
+  "ORIGINAL line? There is no single correct wording — accept any answer,",
+  "however phrased, that captures the gist of the original in plainer words.",
   "",
-  "Return one of: 'accept', 'reject', or 'unsure'.",
-  "Only return 'accept' or 'reject' when you are at least 95% confident either",
-  "way. If there is any real doubt, return 'unsure'. Always report your honest",
-  "confidence (0-100) and a one-line reason."
+  "Be PERMISSIVE. Your only job is to filter out answers that are OBVIOUSLY",
+  "wrong — off-topic, nonsense or gibberish, blank, or that clearly contradict",
+  "or completely miss the meaning. Accept anything that plausibly captures the",
+  "gist in plainer words, even if it is loose, partial, clumsy, or not how you",
+  "would phrase it. A wrongly REJECTED good answer is far worse than letting a",
+  "so-so answer through, so when in any doubt, ACCEPT.",
+  "",
+  "Return one of: 'accept', 'reject', or 'unsure'. Only 'reject' when you are",
+  "essentially certain (>=98%) the answer is wrong. Use 'unsure' only for a",
+  "genuine coin-flip you cannot resolve. Report your confidence (0-100) in the",
+  "verdict and a one-line reason."
 ].join("\n");
 
 function buildUserPrompt(prompt, answerText) {
-  const accepted = [prompt.correct, ...(prompt.answers || [])]
-    .filter(Boolean)
-    .map((a) => `  - ${a}`)
-    .join("\n");
+  // No accepted-answer examples on purpose: the judge should decide purely on
+  // whether the answer conveys the ORIGINAL line's meaning, not on resemblance
+  // to a canonical wording. (A future iteration may inject a curated set of
+  // real accept/reject examples here as few-shot context — see judgeExamples.)
   return [
     `Original line to rewrite: ${prompt.prompt}`,
-    "",
-    "Example accepted rewrites (not exhaustive):",
-    accepted,
     "",
     `Player's answer: "${answerText}"`,
     "",
@@ -130,12 +135,9 @@ async function classify(modelKey, prompt, answerText) {
 
   let verdict = data.verdict;
   const confidence = Math.max(0, Math.min(100, Math.round(Number(data.confidence))));
-  if (
-    (verdict === "accept" || verdict === "reject") &&
-    confidence < CONFIDENCE_THRESHOLD
-  ) {
-    verdict = "unsure";
-  }
+  // Apply the asymmetric gates: reject only when near-certain, accept on a lean.
+  if (verdict === "reject" && confidence < REJECT_CONFIDENCE) verdict = "unsure";
+  else if (verdict === "accept" && confidence < ACCEPT_CONFIDENCE) verdict = "unsure";
   return { verdict, confidence, reason: String(data.reason || "").slice(0, 500) };
 }
 
